@@ -303,14 +303,20 @@ to get back to the start.
 Unlike the stairs test (auto-climbed via `stepOffset`), each hop here is a
 **genuine jump** — the height gaps (0.12/0.16/0.17/0.17) exceed `stepOffset`
 (0.04) and rely on `PlayerMotor.jumpHeight` (0.22) to actually clear them.
-This coexists with, doesn't replace, the generic stairs/hiding-spot test props
-elsewhere in the room.
+The path is a straight line along +Z at a constant X (no strafing needed,
+just forward + jump repeatedly), with a deliberately tight ~0.08m edge-to-edge
+gap between each piece — worked out from the actual jump arc math
+(`jumpHeight`/`gravity` give ~0.22s time-to-apex, ~0.11m of horizontal travel
+at `walkSpeed`), since the first version's looser diagonal gaps (~0.2m) were
+right at the edge of what's physically reachable. This coexists with, doesn't
+replace, the generic stairs/hiding-spot test props elsewhere in the room.
 
 1. Run **Mouse Game → Build Kitchen Level** (after Build MVP Scene, Build Test
    Room, and ideally Build Cat AI so the cat gets repositioned to guard the
-   path too) — builds the furniture path near `(-3.5..-2.1, *, 2..3.4)`, moves
+   path too) — builds the furniture path at `x=-3.3, z=2.1..3.41`, moves
    `Cheese` onto the countertop, adds an invisible `EscapeZone` trigger near
-   the cabinet, and repositions `Cat` to `(-2.85, 0, 2.9)`.
+   the cabinet, and repositions `Cat` to `(-3.3, 0, 2.75)` (the floor at the
+   base of the path — it can't jump/climb the furniture itself).
 2. If you'd already built `Cat AI` before this, re-run **Build Cat AI**
    afterward too — it re-bakes the NavMesh, which should now account for the
    new furniture blocking/shaping paths through that area.

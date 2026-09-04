@@ -19,13 +19,20 @@ namespace MouseGame.EditorTools
     /// </summary>
     public static class KitchenLevelBuilder
     {
-        // Each entry: name, top height (world Y), horizontal position (X, Z), footprint (X, Z).
+        // Straight line along +Z (constant X) rather than a diagonal — keeps each hop a plain
+        // forward jump, no strafing needed. Edge-to-edge gap between consecutive pieces is a
+        // deliberately tight ~0.08m: with PlayerMotor's jumpHeight (0.22) and gravity (-9), the
+        // jump's time-to-apex is ~0.22s, giving only ~0.11m of horizontal travel at walkSpeed
+        // (0.5) — the original diagonal layout's ~0.2m edge gaps were right at the edge of
+        // physically reachable and prone to feeling unfair. Each entry: name, top height
+        // (world Y), horizontal position (X, Z), footprint (X, Z).
+        private const float PathX = -3.3f;
         private static readonly (string name, float topHeight, float x, float z, float sizeX, float sizeZ)[] Path =
         {
-            ("KitchenBox", 0.12f, -3.2f, 2.35f, 0.20f, 0.20f),
-            ("KitchenChair", 0.28f, -2.85f, 2.7f, 0.22f, 0.22f),
-            ("KitchenTable", 0.45f, -2.5f, 3.05f, 0.30f, 0.30f),
-            ("KitchenCountertop", 0.62f, -2.1f, 3.4f, 0.35f, 0.35f),
+            ("KitchenBox", 0.12f, PathX, 2.20f, 0.20f, 0.20f),
+            ("KitchenChair", 0.28f, PathX, 2.49f, 0.22f, 0.22f),
+            ("KitchenTable", 0.45f, PathX, 2.83f, 0.30f, 0.30f),
+            ("KitchenCountertop", 0.62f, PathX, 3.235f, 0.35f, 0.35f),
         };
 
         private const float CabinetX = -3.5f;
@@ -63,8 +70,8 @@ namespace MouseGame.EditorTools
             MvpSceneBuilder.SaveActiveScene();
 
             Debug.Log("Kitchen level built and saved: cabinet -> box -> chair -> table -> " +
-                      "countertop near (-3.5..-2.1, *, 2..3.4), Cheese moved onto the " +
-                      "countertop, EscapeZone near the cabinet, Cat repositioned to guard the " +
+                      $"countertop, a straight line at x={PathX}, z=2.1..3.41. Cheese moved onto " +
+                      "the countertop, EscapeZone near the cabinet, Cat repositioned to guard the " +
                       "path. Get the cheese, then return to the escape zone to win.");
         }
 
@@ -188,9 +195,10 @@ namespace MouseGame.EditorTools
                 return; // Cat AI not built yet - not this tool's job to require it
             }
 
-            // Guard the middle of the traversal path. CatAI reads its spawn/patrol center from
-            // transform.position at Awake(), so just moving it here is enough.
-            cat.transform.position = new Vector3(-2.85f, 0f, 2.9f);
+            // Guard the floor at the base of the traversal path (the cat can't jump/climb the
+            // furniture itself). CatAI reads its spawn/patrol center from transform.position at
+            // Awake(), so just moving it here is enough.
+            cat.transform.position = new Vector3(PathX, 0f, 2.75f);
         }
 
         private static void BuildBlock(string name, Vector3 position, Vector3 scale)
