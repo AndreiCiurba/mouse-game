@@ -103,46 +103,34 @@ Press Play:
 
 That's the full MVP loop: move around a room, find the item.
 
-## Milestone 2 — Traversal / climbing
+## Milestone 2 — Traversal (stairs + free jump)
 
-Use **Mouse Game → Build Traversal Test (Milestone 2)** (from
-`Assets/Editor/TraversalTestBuilder.cs`, run after "Build MVP Scene"). It:
+No custom climb script — this version leans entirely on
+`CharacterController.stepOffset` (Unity's built-in "walk up small steps
+automatically" behavior) plus a normal, always-available jump.
 
-- Adds `PlayerClimb` (from `Assets/Scripts/Player`) to the existing `Player`.
-- Adds a "Press E to climb" prompt (wired to the objective Canvas).
-- Adds two `Climbable`-tagged test props near `(-1.5, *, 0..1)`: `ClimbBox` (0.5m
-  tall) and `ClimbTable` (1m tall, staggered so you can climb the box, then the
-  table from on top of it).
+First, re-run **Mouse Game → Build MVP Scene (Player + Objective)** (safe to
+re-run) — it now:
+- Sets `Player`'s `CharacterController.stepOffset = 0.3` explicitly.
+- Sets `PlayerMotor.jumpHeight = 0.9` (a real, always-on jump — no gating).
+- Cleans up the old E-climb prototype's leftovers (`ClimbBox`/`ClimbTable`/
+  `ClimbPromptText` objects and any now-missing `PlayerClimb`/`ClimbPromptUI`
+  script references on `Player`/`GameManager`).
 
-Drag `ClimbBox`/`ClimbTable` into your room if that position is outside your walls
-or inside another object.
+Then use **Mouse Game → Build Stairs Test (Milestone 2)** (from
+`Assets/Editor/StairsTestBuilder.cs`) to add a 5-step staircase (0.2m per step,
+under the 0.3m step offset) leading up to a landing platform, near
+`(-1.5, *, 0..~2.8)`. Drag the whole `Stair01..05` + `StairLanding` group into
+your room if it lands outside your walls.
 
-**How it works:** `PlayerClimb` raycasts forward at roughly waist height; if it
-hits a collider with a `Climbable` component, it probes downward from above to
-find the ledge's surface height. If that height is between 0.35m and 1.5m above
-your feet and there's clear space to stand, it shows the prompt — press **E** to
-slide up onto it over ~0.3s.
+**How it works:** nothing to detect or trigger — just walk into the stairs and
+`CharacterController` steps you up each tread as part of normal movement,
+carrying you onto the landing once the steps end. Jump works everywhere, all the
+time; whether it lands you on top of something is just physics (your jump arc
+either reaches a surface or it doesn't, same as any normal jump) — no separate
+climb button or ledge-detection logic involved anymore.
 
-To make any other object (a chair, a shelf, custom furniture) climbable later,
-just add the `Climbable` component (from `Assets/Scripts/Environment`) to it —
-no other wiring needed.
-
-**Test:** walk up to `ClimbBox`, wait for "Press E to climb", press **E** — you
-should slide up onto it. Then walk to `ClimbTable`'s edge and climb again. If the
-prompt doesn't appear, you're either too far/too close, at the wrong height, or
-not facing it squarely — these detection numbers (`wallCheckDistance`,
-`minLedgeHeight`, `maxLedgeHeight` on `PlayerClimb`) are easy to tune in the
-Inspector once you see how it feels.
-
-Also re-run **Build MVP Scene** once (safe/idempotent) after pulling this update —
-it now enforces `PlayerMotor.jumpHeight = 0.3` on the existing `Player`, so a
-plain jump can no longer clear the climbable ledges and skip the climb system
-entirely.
-
-**Debugging the detection:** select `Player` in the Hierarchy while in Play mode.
-`PlayerClimb` draws Scene-view gizmos for its raycasts — yellow/red line for the
-forward wall check, cyan/magenta line for the downward ledge probe, green sphere
-when a valid ledge is found (red if found but blocked). It also logs the reason
-to the Console once per state change (`debugLogging` on the component, on by
-default) — e.g. "hit 'ClimbBox' but it has no Climbable component" tells you
-immediately what to fix.
+**Test:** walk into the stairs — you should rise up each step automatically with
+no key press, and continue onto the landing at the top. Separately, try jumping
+(Space) at things around the room — it should work everywhere, and land you on
+top of anything short enough for the jump arc to clear.

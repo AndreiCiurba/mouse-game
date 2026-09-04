@@ -7,6 +7,7 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 namespace MouseGame.EditorTools
@@ -35,14 +36,16 @@ namespace MouseGame.EditorTools
             GameObject player = BuildPlayer(out PlayerInputReader inputReader);
             ObjectiveManager objectiveManager = BuildObjective();
             BuildPickupItem(objectiveManager);
+            CleanUpOldClimbSystem(player);
 
             Selection.activeGameObject = player;
-            EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
             Undo.CollapseUndoOperations(undoGroup);
+            SaveActiveScene();
 
-            Debug.Log("MVP scene built: Player (move/look/jump/sprint), objective UI, and a " +
-                      "'Cheese' pickup near the world origin. Press Play to test; move the " +
-                      "Cheese object in the Scene view if it doesn't land inside your room.");
+            Debug.Log("MVP scene built and saved to disk: Player (move/look/jump/sprint), " +
+                      "objective UI, and a 'Cheese' pickup near the world origin. Press Play to " +
+                      "test; move the Cheese object in the Scene view if it doesn't land inside " +
+                      "your room.");
         }
 
         private static GameObject BuildPlayer(out PlayerInputReader inputReader)
@@ -51,12 +54,17 @@ namespace MouseGame.EditorTools
             player.transform.position = new Vector3(0f, 1f, 0f);
             player.tag = "Player";
 
-            GetOrAddComponent<CharacterController>(player);
+            CharacterController controller = GetOrAddComponent<CharacterController>(player);
+            // Steps shorter than this are walked up automatically as part of normal movement —
+            // this is what makes stairs work with no custom script at all. Keep individual
+            // stair-tread rises (see StairsTestBuilder) safely under this value.
+            controller.stepOffset = 0.3f;
+
             inputReader = GetOrAddComponent<PlayerInputReader>(player);
             PlayerMotor motor = GetOrAddComponent<PlayerMotor>(player);
-            // Force this even on a pre-existing PlayerMotor: a jump higher than PlayerClimb's
-            // ledge range lets you skip climbing entirely by just jumping onto the furniture.
-            SetSerializedField(motor, "jumpHeight", 0.3f);
+            // Force this even on a pre-existing PlayerMotor, in case an older build left a
+            // different value here.
+            SetSerializedField(motor, "jumpHeight", 0.9f);
 
             // Visible capsule body (CharacterController itself is invisible).
             GameObject body = FindChild(player.transform, "Body");
@@ -174,6 +182,45 @@ namespace MouseGame.EditorTools
 
             CollectibleItem collectible = GetOrAddComponent<CollectibleItem>(cheese);
             SetSerializedField(collectible, "objectiveManager", objectiveManager);
+        }
+
+        /// <summary>
+        /// Removes leftovers from the earlier E-climb prototype (now replaced by automatic
+        /// stair-stepping): the ClimbBox/ClimbTable/ClimbPromptText test objects, and any
+        /// "Missing Script" components left behind on Player/GameManager now that
+        /// PlayerClimb/Climbable/ClimbPromptUI no longer exist as scripts.
+        /// </summary>
+        private static void CleanUpOldClimbSystem(GameObject player)
+        {
+            foreach (string name in new[] { "ClimbBox", "ClimbTable", "ClimbPromptText" })
+            {
+                GameObject leftover = GameObject.Find(name);
+                if (leftover != null)
+                {
+                    Undo.DestroyObjectImmediate(leftover);
+                }
+            }
+
+            GameObjectUtility.RemoveMonoBehavioursWithMissingScript(player);
+
+            GameObject gameManager = GameObject.Find("GameManager");
+            if (gameManager != null)
+            {
+                GameObjectUtility.RemoveMonoBehavioursWithMissingScript(gameManager);
+            }
+        }
+
+        /// <summary>
+        /// Marking a scene dirty does NOT persist it — only an explicit save (or the user
+        /// pressing Ctrl+S) writes it to disk. Every build tool must call this at the end, or
+        /// everything it built only lives in the Editor's memory until the next domain reload
+        /// silently drops it.
+        /// </summary>
+        internal static void SaveActiveScene()
+        {
+            Scene scene = EditorSceneManager.GetActiveScene();
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene);
         }
 
         private static GameObject GetOrCreateRoot(string name)

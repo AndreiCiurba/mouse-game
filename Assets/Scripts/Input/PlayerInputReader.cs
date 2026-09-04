@@ -21,7 +21,6 @@ namespace MouseGame.Input
         [SerializeField] private string mouseYAxis = "Mouse Y";
         [SerializeField] private KeyCode jumpKey = KeyCode.Space;
         [SerializeField] private KeyCode sprintKey = KeyCode.LeftShift;
-        [SerializeField] private KeyCode climbKey = KeyCode.E;
 
         /// <summary>Move direction in local X/Z space, each axis in [-1, 1].</summary>
         public Vector2 Move { get; private set; }
@@ -35,9 +34,6 @@ namespace MouseGame.Input
         /// <summary>True for every frame the sprint input is held down.</summary>
         public bool SprintHeld { get; private set; }
 
-        /// <summary>True for exactly the frame the climb input was pressed.</summary>
-        public bool ClimbPressed { get; private set; }
-
         private void Update()
         {
             Move = new Vector2(
@@ -50,7 +46,6 @@ namespace MouseGame.Input
 
             JumpPressed = UnityEngine.Input.GetKeyDown(jumpKey);
             SprintHeld = UnityEngine.Input.GetKey(sprintKey);
-            ClimbPressed = UnityEngine.Input.GetKeyDown(climbKey);
         }
     }
 }

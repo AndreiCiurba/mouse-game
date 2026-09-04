@@ -4,7 +4,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project state
 
-This repository currently contains only `README.md` (the design/spec doc) — no Unity project has been scaffolded yet. The immediate task is **Milestone 1**: a basic first-person player controller (capsule) in a simple Unity test scene, built with clean architecture that can later support mobile input, climbing, the mouse character, and cat AI. Do not jump ahead to later milestones before earlier ones are working.
+The Unity project is scaffolded (Universal 3D/URP template) and Milestone 1 (player
+movement + a find-the-item objective) is working. Milestone 2 (traversal) is in
+progress, implemented as stairs (`CharacterController.stepOffset`) plus an
+always-on jump — see "Development approach" below for how this diverges from the
+README's original climb-button design. Do not jump ahead to later milestones
+before earlier ones are solid.
+
+Most of `Assets/Scripts/**` scene wiring (Player, camera, objective UI, pickup
+item, test props) is done via one-click Editor tools in `Assets/Editor/` (`Mouse
+Game` menu) rather than by hand — see `SETUP.md` for what each one builds and in
+what order to run them. Prefer extending those tools over asking for manual
+Inspector wiring, since re-running a tool is the update path being used here.
 
 ## What this project is
 
@@ -25,8 +36,8 @@ No build system exists yet (no `.sln`/`.csproj`/Unity project files present). On
 
 Work through milestones **in order**, keeping a playable build at every stage:
 
-1. Player prototype — capsule with keyboard/mouse WASD look, move, sprint, jump, gravity, collision, falling/landing. Keep movement code modular so mobile input can be swapped in later.
-2. Traversal prototype — primitive test room (floor/walls/boxes/chair/table/shelf); jumping, climbing/mantling, falling. Climbing starts simple: detect climbable surface → verify valid destination → show climb indication → move player onto surface. Use a `Climbable` component/tag. Do not build complex Assassin's Creed-style climbing.
+1. Player prototype — capsule with keyboard/mouse WASD look, move, sprint, jump, gravity, collision, falling/landing. Keep movement code modular so mobile input can be swapped in later. **Done** (`PlayerInputReader`/`PlayerMotor`/`PlayerLook`).
+2. Traversal prototype — primitive test room (floor/walls/boxes/chair/table/shelf); jumping, falling, walking up low ledges. **Implemented differently than the README's original sketch**: instead of a dedicated climb button + `Climbable` component/raycast detection (tried, reverted — see git history around `StairsTestBuilder`/removed `PlayerClimb`), traversal is `CharacterController.stepOffset` auto-stepping up stair treads shorter than the offset, plus an unconditional jump (`PlayerMotor.jumpHeight`) that lands you on anything the arc reaches, same as any ordinary jump. No separate climb input exists. If a future need (e.g. mantling something taller than a jump can clear) brings back an explicit climb action, reintroduce it deliberately rather than assuming the old design is still there.
 3. Mobile controls — Unity Input System, left-side virtual joystick (movement), right-side touch drag (camera), buttons for jump/climb/sprint. Input must be abstracted so keyboard and mobile feed the same player controller.
 4. Mouse character — low-poly mouse modeled in Blender (body, head, ears, nose, eyes, tail), imported into Unity. Still first-person; the mouse body need not be fully visible on-screen. Keep it visually small relative to the environment.
 5. Cat AI — NavMesh-based enemy with a state machine: Idle → Patrol → Sees/Hears Player → Chase → (player escapes) Search → (found again) Chase → (caught) Game Over. Keep states modular (Idle, Patrol, InvestigateNoise, Chase, Search, Attack) for future expansion. No machine learning.

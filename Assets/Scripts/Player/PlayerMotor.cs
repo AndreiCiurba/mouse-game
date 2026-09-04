@@ -5,8 +5,11 @@ namespace MouseGame.Player
 {
     /// <summary>
     /// Basic first-person movement: walk, sprint, jump, gravity, collision (via CharacterController).
-    /// Climbing lives in the separate PlayerClimb component, which disables this one while a climb
-    /// is in progress. Jump height is intentionally small — see the jumpHeight tooltip.
+    /// Jump is unconditional — it always fires when grounded; whether it actually lands you on
+    /// something is just a product of the physics (arc height vs. what's in the way), same as
+    /// any normal jump. Stairs/low ledges aren't handled here at all — see
+    /// CharacterController.stepOffset, configured by MvpSceneBuilder, which walks the player up
+    /// steps shorter than that threshold automatically as part of normal movement.
     /// </summary>
     [RequireComponent(typeof(CharacterController))]
     [RequireComponent(typeof(PlayerInputReader))]
@@ -17,9 +20,7 @@ namespace MouseGame.Player
         [SerializeField] private float sprintSpeed = 6f;
 
         [Header("Jump / Gravity")]
-        [Tooltip("Keep this below PlayerClimb's ledge height range, or a plain jump lets you " +
-                 "skip climbing altogether and land straight on climbable furniture.")]
-        [SerializeField] private float jumpHeight = 0.3f;
+        [SerializeField] private float jumpHeight = 0.9f;
         [SerializeField] private float gravity = -20f;
         [Tooltip("Small downward force applied while grounded so CharacterController.isGrounded stays reliable.")]
         [SerializeField] private float groundedStickForce = -2f;
