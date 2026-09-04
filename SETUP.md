@@ -231,4 +231,18 @@ on `CatAI`/`CatVision`/`CatHearing`, easy to adjust once you've felt it. The
 NavMesh is baked at Unity's default "Humanoid" scale rather than true
 cat-scale (see the comment atop `CatAIBuilder.cs` for why) — the cat may not
 hug walls as tightly as it ideally would, but should still navigate the room
+
+### Hiding spots
+
+The room was wide open with nothing to break line of sight, which is most of
+why the cat felt unfair. **Mouse Game → Build Hiding Spots** scatters 5 small
+cover blocks around the room — CatVision already treats any solid collider as
+blocking, so standing behind one just works, no extra wiring. Cover height
+(0.26) is taller than the cat's eye point (0.20, set on `CatVision.eye` in
+`CatAIBuilder` — previously defaulted to ground level, which didn't match
+where the model's eyes actually are).
+
+**Important ordering:** run **Build Hiding Spots**, then re-run **Build Cat AI
+(Milestone 5)** — the NavMesh was baked before these obstacles existed, so the
+cat's pathing won't know to route around them until it's rebaked.
 correctly.

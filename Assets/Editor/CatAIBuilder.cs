@@ -155,7 +155,20 @@ namespace MouseGame.EditorTools
             agent.baseOffset = 0f;
             agent.stoppingDistance = 0.05f;
 
-            GetOrAddComponent<CatVision>(cat);
+            // Eye point at head height (matches CatModelBuilder's Head), not the root/ground -
+            // otherwise vision rays start at floor level, which makes low cover ineffective and
+            // doesn't match where the model's own eyes are.
+            Transform existingEye = cat.transform.Find("EyePoint");
+            GameObject eyeGO = existingEye != null ? existingEye.gameObject : new GameObject("EyePoint");
+            if (existingEye == null)
+            {
+                Undo.RegisterCreatedObjectUndo(eyeGO, "Build Cat AI");
+                eyeGO.transform.SetParent(cat.transform, false);
+            }
+            eyeGO.transform.localPosition = new Vector3(0f, 0.20f, 0.17f);
+
+            CatVision vision = GetOrAddComponent<CatVision>(cat);
+            SetSerializedField(vision, "eye", eyeGO.transform);
             GetOrAddComponent<CatHearing>(cat);
             CatAI catAI = GetOrAddComponent<CatAI>(cat);
             SetSerializedField(catAI, "gameOverManager", gameOverManager);
