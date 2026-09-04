@@ -80,7 +80,9 @@ namespace MouseGame.EditorTools
             PlayerMotor motor = GetOrAddComponent<PlayerMotor>(player);
             // Force these even on a pre-existing PlayerMotor, in case an older build left
             // different values here.
-            SetSerializedField(motor, "jumpHeight", 0.08f);
+            SetSerializedField(motor, "jumpHeight", 0.22f);
+            SetSerializedField(motor, "walkSpeed", 0.5f);
+            SetSerializedField(motor, "sprintSpeed", 0.9f);
             if (playerLayer >= 0)
             {
                 // Exclude the Player's own layer from its ground check, or CheckGrounded can

@@ -18,11 +18,11 @@ namespace MouseGame.Player
         [Header("Movement")]
         [Tooltip("Scaled for a mouse-sized CharacterController (~0.2m tall) — small absolute " +
                  "numbers on purpose, not a bug.")]
-        [SerializeField] private float walkSpeed = 1f;
-        [SerializeField] private float sprintSpeed = 1.8f;
+        [SerializeField] private float walkSpeed = 0.5f;
+        [SerializeField] private float sprintSpeed = 0.9f;
 
         [Header("Jump / Gravity")]
-        [SerializeField] private float jumpHeight = 0.08f;
+        [SerializeField] private float jumpHeight = 0.22f;
         [SerializeField] private float gravity = -9f;
         [Tooltip("Small downward force applied while grounded to keep the character settled onto the floor.")]
         [SerializeField] private float groundedStickForce = -0.3f;

@@ -197,3 +197,38 @@ stairs/sprint should all still work, just at mouse-appropriate speed and
 jump height (much smaller numbers than before — that's intentional). If
 movement feels too slow/fast or the camera height looks off, `PlayerMotor` and
 the camera's local position (in `MvpSceneBuilder`) are the tunable spots.
+
+## Milestone 5 — Cat AI
+
+State machine: **Idle → Patrol → (sees/hears player) → Chase → (loses player)
+→ Search → (times out) → Patrol**, or **Chase → (catches player) → Game
+Over**. Seeing the player always wins and jumps straight to Chase from any
+state. See `Assets/Scripts/AI/{CatAI,CatVision,CatHearing}.cs` and
+`Assets/Scripts/Game/GameOverManager.cs`.
+
+`CatHearing` is currently a flat proximity check (not real noise levels) —
+that's Milestone 6's job; it's a deliberate stand-in so the state machine has
+somewhere to plug hearing in now.
+
+1. Run **Mouse Game → Build Cat AI (Milestone 5)** (after Build MVP Scene and
+   Build Test Room) — bakes a NavMesh over the room, builds `Cat` (NavMeshAgent
+   + vision/hearing/state machine + a primitive placeholder model, same
+   "primitives until Blender" approach as the mouse) near `(2, 0, -2)`, and
+   wires up the Game Over UI/manager to freeze the player and show a message
+   on catch.
+2. Press Play.
+
+**Test:** the cat should idle briefly, then wander to random nearby points
+(Patrol). Walk into its vision cone (in front of it, within range) — it should
+turn and chase. Get caught (get close while it's chasing) — movement should
+freeze and "Caught! Game Over" should appear. Back away while chasing to break
+line of sight — it should head to your last known position, look around
+briefly (Search), then give up and resume patrolling.
+
+**Known rough edges:** this is a first pass with no live tuning — vision
+range/angle, hearing radius, speeds, and search duration are all plain fields
+on `CatAI`/`CatVision`/`CatHearing`, easy to adjust once you've felt it. The
+NavMesh is baked at Unity's default "Humanoid" scale rather than true
+cat-scale (see the comment atop `CatAIBuilder.cs` for why) — the cat may not
+hug walls as tightly as it ideally would, but should still navigate the room
+correctly.
