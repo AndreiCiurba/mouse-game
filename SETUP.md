@@ -220,18 +220,22 @@ somewhere to plug hearing in now.
 
 **Test:** the cat should idle briefly, then wander to random nearby points
 (Patrol). Walk into its vision cone (in front of it, within range) — it should
-turn and chase. Get caught (get close while it's chasing) — movement should
-freeze and "Caught! Game Over" should appear. Back away while chasing to break
-line of sight — it should head to your last known position, look around
-briefly (Search), then give up and resume patrolling.
+turn and chase. Let it get close (within `attackTriggerDistance`, 0.3) — it
+should stop and pause briefly (`Attack` windup) rather than catching you
+instantly; if you get clear or break line of sight during that pause, it
+should resume Chase instead of catching you. Stay put/get cornered through
+the windup — movement should freeze and "Caught! Game Over" should appear.
+Back away while chasing (before it gets close enough to attack) to break line
+of sight — it should head to your last known position, look around briefly
+(Search), then give up and resume patrolling.
 
 **Known rough edges:** this is a first pass with no live tuning — vision
-range/angle, hearing radius, speeds, and search duration are all plain fields
-on `CatAI`/`CatVision`/`CatHearing`, easy to adjust once you've felt it. The
-NavMesh is baked at Unity's default "Humanoid" scale rather than true
-cat-scale (see the comment atop `CatAIBuilder.cs` for why) — the cat may not
-hug walls as tightly as it ideally would, but should still navigate the room
-correctly.
+range/angle, hearing radius, speeds, search duration, and the attack
+trigger/windup are all plain fields on `CatAI`/`CatVision`/`CatHearing`, easy
+to adjust once you've felt it. The NavMesh is baked at Unity's default
+"Humanoid" scale rather than true cat-scale (see the comment atop
+`CatAIBuilder.cs` for why) — the cat may not hug walls as tightly as it
+ideally would, but should still navigate the room correctly.
 
 ### Hiding spots
 

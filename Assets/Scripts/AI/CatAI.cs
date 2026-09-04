@@ -5,9 +5,10 @@ using UnityEngine.AI;
 namespace MouseGame.AI
 {
     /// <summary>
-    /// Idle -> Patrol -> (sees/hears player) -> Chase -> (loses player) -> Search ->
-    /// (times out) -> Patrol, or (catches player) -> Game Over. Seeing the player always wins
-    /// and jumps straight to Chase from any state.
+    /// Idle -> Patrol -> (sees/hears player) -> Chase -> (gets close) -> Attack -> (catches
+    /// player) -> Game Over, or (player escapes the windup) -> back to Chase. Chase ->
+    /// (loses player) -> Search -> (times out) -> Patrol. Seeing the player always wins and
+    /// jumps straight to Chase from any state except Chase/Attack themselves.
     ///
     /// Each state is a private method rather than a separate class/object — the simplest version
     /// that still keeps states clearly separated, per the README's "keep AI modular" guidance.
@@ -18,7 +19,7 @@ namespace MouseGame.AI
     [RequireComponent(typeof(CatHearing))]
     public class CatAI : MonoBehaviour
     {
-        private enum State { Idle, Patrol, InvestigateNoise, Chase, Search }
+        private enum State { Idle, Patrol, InvestigateNoise, Chase, Search, Attack }
 
         [Header("Speeds")]
         [Tooltip("Kept below PlayerMotor's walkSpeed/sprintSpeed (0.5/0.9) on purpose - the cat " +
@@ -38,7 +39,10 @@ namespace MouseGame.AI
         [Tooltip("How long Chase keeps heading to the last-seen spot after losing sight before giving up to Search.")]
         [SerializeField] private float loseSightGrace = 1f;
 
-        [Header("Catch")]
+        [Header("Attack")]
+        [Tooltip("Chase escalates to a telegraphed Attack windup once within this distance — gives the player a brief chance to react/escape before the actual catch, instead of an instant unavoidable catch the moment the cat gets close.")]
+        [SerializeField] private float attackTriggerDistance = 0.3f;
+        [SerializeField] private float attackWindup = 0.35f;
         [SerializeField] private float catchDistance = 0.15f;
 
         [Header("References")]
@@ -67,7 +71,9 @@ namespace MouseGame.AI
 
         private void Update()
         {
-            if (state != State.Chase && vision.CanSeePlayer(out Vector3 seenPos))
+            // Attack is excluded too — it already implies the cat sees the player; re-triggering
+            // Chase every frame from here would cancel the windup before it ever completes.
+            if (state != State.Chase && state != State.Attack && vision.CanSeePlayer(out Vector3 seenPos))
             {
                 investigatePoint = seenPos;
                 EnterState(State.Chase);
@@ -80,6 +86,7 @@ namespace MouseGame.AI
                 case State.InvestigateNoise: UpdateInvestigateNoise(); break;
                 case State.Chase: UpdateChase(); break;
                 case State.Search: UpdateSearch(); break;
+                case State.Attack: UpdateAttack(); break;
             }
         }
 
@@ -111,6 +118,11 @@ namespace MouseGame.AI
                     agent.isStopped = false;
                     agent.speed = patrolSpeed;
                     agent.SetDestination(investigatePoint);
+                    break;
+                case State.Attack:
+                    // Stop moving during the windup — a stationary pounce telegraph, and it's
+                    // what gives the player a window to get clear before the catch check.
+                    agent.isStopped = true;
                     break;
             }
         }
@@ -154,11 +166,9 @@ namespace MouseGame.AI
                 agent.SetDestination(seenPos);
                 stateTimer = 0f;
 
-                if (Vector3.Distance(transform.position, seenPos) <= catchDistance)
+                if (Vector3.Distance(transform.position, seenPos) <= attackTriggerDistance)
                 {
-                    gameOverManager?.PlayerCaught();
-                    agent.isStopped = true;
-                    enabled = false; // stop reacting once the game is over
+                    EnterState(State.Attack);
                 }
 
                 return;
@@ -169,6 +179,41 @@ namespace MouseGame.AI
             if (stateTimer > loseSightGrace || HasReachedDestination())
             {
                 EnterState(State.Search);
+            }
+        }
+
+        private void UpdateAttack()
+        {
+            stateTimer += Time.deltaTime;
+
+            bool stillSees = vision.CanSeePlayer(out Vector3 seenPos);
+            if (stillSees)
+            {
+                investigatePoint = seenPos;
+            }
+
+            // Give the player a real chance to escape the windup by getting clear or breaking
+            // line of sight, rather than the catch being a foregone conclusion once triggered.
+            if (!stillSees || Vector3.Distance(transform.position, investigatePoint) > attackTriggerDistance)
+            {
+                EnterState(State.Chase);
+                return;
+            }
+
+            if (stateTimer < attackWindup)
+            {
+                return;
+            }
+
+            if (Vector3.Distance(transform.position, investigatePoint) <= catchDistance)
+            {
+                gameOverManager?.PlayerCaught();
+                agent.isStopped = true;
+                enabled = false; // stop reacting once the game is over
+            }
+            else
+            {
+                EnterState(State.Chase);
             }
         }
 
