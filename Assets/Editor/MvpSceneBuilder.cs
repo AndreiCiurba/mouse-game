@@ -92,6 +92,8 @@ namespace MouseGame.EditorTools
 
             // Noise radii (walking/sprinting/jumping/landing) that CatHearing reads from.
             GetOrAddComponent<NoiseEmitter>(player);
+            // Audible placeholder SFX for the same events (RequireComponent auto-adds AudioSource).
+            GetOrAddComponent<PlayerAudio>(player);
 
             // Drop the old plain-capsule "Body" from earlier milestones — replaced below by an
             // actual (primitive-assembled) mouse shape now that scale makes the difference visible.

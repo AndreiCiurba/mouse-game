@@ -260,8 +260,16 @@ that's exactly what having a stable method signature there was for.
 prop-interaction system yet to trigger it. `NoiseEmitter.EmitNoise(radius)` is
 the hook for whenever one exists; `CatHearing` won't need to change.
 
-No new build step — re-run **Build MVP Scene** to add `NoiseEmitter` to an
-existing `Player` if it's not already there (safe/idempotent, same as always).
+**Audio:** the noise system above is silent by design (it's a gameplay radius
+for the cat's hearing, not sound effects). Actual audible footstep/jump/land
+SFX are a separate addition — `PlayerAudio` (also on `Player`) plays short
+procedurally generated placeholder tones (`Assets/Scripts/Audio/
+ProceduralAudio.cs`) on the same `PlayerMotor` events, since no real audio
+asset files exist in the project. Swap in real recorded clips later by
+assigning them in `PlayerAudio` instead of the generated ones.
+
+No new build step — re-run **Build MVP Scene** to add `NoiseEmitter`/
+`PlayerAudio` to an existing `Player` if not already there (safe/idempotent).
 
 **Test:** stand still near the cat's patrol path — it shouldn't notice you
 from sound alone at normal patrol distances (only sight, or if you're inside
