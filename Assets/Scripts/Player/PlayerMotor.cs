@@ -26,6 +26,10 @@ namespace MouseGame.Player
         [SerializeField] private float groundedStickForce = -2f;
         [Tooltip("How many jumps are allowed before you must touch ground again (2 = one air jump/double jump).")]
         [SerializeField] private int maxJumps = 2;
+        [Tooltip("Ignore the ground check for this long right after a jump fires. Without it, the very " +
+                 "next frame or two can still read 'grounded' (you haven't physically separated from " +
+                 "the floor yet), silently resetting the jump counter and handing out a bonus jump.")]
+        [SerializeField] private float postJumpGroundedIgnoreTime = 0.15f;
 
         [Header("Ground Check")]
         [Tooltip("CharacterController.isGrounded is unreliable on flat/open ground (it can flicker " +
@@ -43,6 +47,7 @@ namespace MouseGame.Player
         private PlayerInputReader input;
         private float verticalVelocity;
         private int jumpsUsedSinceGrounded;
+        private float groundedIgnoreTimer;
 
         private void Awake()
         {
@@ -67,7 +72,8 @@ namespace MouseGame.Player
 
         private void ApplyVerticalMovement()
         {
-            bool grounded = CheckGrounded();
+            groundedIgnoreTimer -= Time.deltaTime;
+            bool grounded = groundedIgnoreTimer <= 0f && CheckGrounded();
 
             if (grounded)
             {
@@ -84,6 +90,7 @@ namespace MouseGame.Player
                 // v = sqrt(h * -2 * g)
                 verticalVelocity = Mathf.Sqrt(jumpHeight * -2f * gravity);
                 jumpsUsedSinceGrounded++;
+                groundedIgnoreTimer = postJumpGroundedIgnoreTime;
             }
 
             verticalVelocity += gravity * Time.deltaTime;

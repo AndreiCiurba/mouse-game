@@ -2066,7 +2066,7 @@ GameObject:
   - component: {fileID: 1763617595}
   - component: {fileID: 1763617594}
   - component: {fileID: 1763617593}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Player
   m_TagString: Player
   m_Icon: {fileID: 0}
@@ -2090,6 +2090,12 @@ MonoBehaviour:
   jumpHeight: 0.9
   gravity: -20
   groundedStickForce: -2
+  maxJumps: 1
+  groundCheckDistance: 0.15
+  groundCheckRadius: 0.12
+  groundMask:
+    serializedVersion: 2
+    m_Bits: 4294967039
 --- !u!114 &1763617594
 MonoBehaviour:
   m_ObjectHideFlags: 0
