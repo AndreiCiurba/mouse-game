@@ -5,8 +5,8 @@ namespace MouseGame.Player
 {
     /// <summary>
     /// Basic first-person movement: walk, sprint, jump, gravity, collision (via CharacterController).
-    /// Climbing is deliberately out of scope here — see the README's Milestone 2 for that, which
-    /// will likely live in a separate PlayerClimb component that temporarily takes over movement.
+    /// Climbing lives in the separate PlayerClimb component, which disables this one while a climb
+    /// is in progress. Jump height is intentionally small — see the jumpHeight tooltip.
     /// </summary>
     [RequireComponent(typeof(CharacterController))]
     [RequireComponent(typeof(PlayerInputReader))]
@@ -17,7 +17,9 @@ namespace MouseGame.Player
         [SerializeField] private float sprintSpeed = 6f;
 
         [Header("Jump / Gravity")]
-        [SerializeField] private float jumpHeight = 1.2f;
+        [Tooltip("Keep this below PlayerClimb's ledge height range, or a plain jump lets you " +
+                 "skip climbing altogether and land straight on climbable furniture.")]
+        [SerializeField] private float jumpHeight = 0.3f;
         [SerializeField] private float gravity = -20f;
         [Tooltip("Small downward force applied while grounded so CharacterController.isGrounded stays reliable.")]
         [SerializeField] private float groundedStickForce = -2f;

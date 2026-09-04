@@ -102,3 +102,47 @@ Press Play:
   on screen (and log to the Console).
 
 That's the full MVP loop: move around a room, find the item.
+
+## Milestone 2 — Traversal / climbing
+
+Use **Mouse Game → Build Traversal Test (Milestone 2)** (from
+`Assets/Editor/TraversalTestBuilder.cs`, run after "Build MVP Scene"). It:
+
+- Adds `PlayerClimb` (from `Assets/Scripts/Player`) to the existing `Player`.
+- Adds a "Press E to climb" prompt (wired to the objective Canvas).
+- Adds two `Climbable`-tagged test props near `(-1.5, *, 0..1)`: `ClimbBox` (0.5m
+  tall) and `ClimbTable` (1m tall, staggered so you can climb the box, then the
+  table from on top of it).
+
+Drag `ClimbBox`/`ClimbTable` into your room if that position is outside your walls
+or inside another object.
+
+**How it works:** `PlayerClimb` raycasts forward at roughly waist height; if it
+hits a collider with a `Climbable` component, it probes downward from above to
+find the ledge's surface height. If that height is between 0.35m and 1.5m above
+your feet and there's clear space to stand, it shows the prompt — press **E** to
+slide up onto it over ~0.3s.
+
+To make any other object (a chair, a shelf, custom furniture) climbable later,
+just add the `Climbable` component (from `Assets/Scripts/Environment`) to it —
+no other wiring needed.
+
+**Test:** walk up to `ClimbBox`, wait for "Press E to climb", press **E** — you
+should slide up onto it. Then walk to `ClimbTable`'s edge and climb again. If the
+prompt doesn't appear, you're either too far/too close, at the wrong height, or
+not facing it squarely — these detection numbers (`wallCheckDistance`,
+`minLedgeHeight`, `maxLedgeHeight` on `PlayerClimb`) are easy to tune in the
+Inspector once you see how it feels.
+
+Also re-run **Build MVP Scene** once (safe/idempotent) after pulling this update —
+it now enforces `PlayerMotor.jumpHeight = 0.3` on the existing `Player`, so a
+plain jump can no longer clear the climbable ledges and skip the climb system
+entirely.
+
+**Debugging the detection:** select `Player` in the Hierarchy while in Play mode.
+`PlayerClimb` draws Scene-view gizmos for its raycasts — yellow/red line for the
+forward wall check, cyan/magenta line for the downward ledge probe, green sphere
+when a valid ledge is found (red if found but blocked). It also logs the reason
+to the Console once per state change (`debugLogging` on the component, on by
+default) — e.g. "hit 'ClimbBox' but it has no Climbable component" tells you
+immediately what to fix.

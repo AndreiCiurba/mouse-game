@@ -53,7 +53,10 @@ namespace MouseGame.EditorTools
 
             GetOrAddComponent<CharacterController>(player);
             inputReader = GetOrAddComponent<PlayerInputReader>(player);
-            GetOrAddComponent<PlayerMotor>(player);
+            PlayerMotor motor = GetOrAddComponent<PlayerMotor>(player);
+            // Force this even on a pre-existing PlayerMotor: a jump higher than PlayerClimb's
+            // ledge range lets you skip climbing entirely by just jumping onto the furniture.
+            SetSerializedField(motor, "jumpHeight", 0.3f);
 
             // Visible capsule body (CharacterController itself is invisible).
             GameObject body = FindChild(player.transform, "Body");
@@ -213,6 +216,20 @@ namespace MouseGame.EditorTools
             }
 
             prop.objectReferenceValue = value;
+            so.ApplyModifiedProperties();
+        }
+
+        private static void SetSerializedField(Object target, string fieldName, float value)
+        {
+            var so = new SerializedObject(target);
+            SerializedProperty prop = so.FindProperty(fieldName);
+            if (prop == null)
+            {
+                Debug.LogError($"MvpSceneBuilder: field '{fieldName}' not found on {target.GetType().Name}.");
+                return;
+            }
+
+            prop.floatValue = value;
             so.ApplyModifiedProperties();
         }
     }
