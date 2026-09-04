@@ -318,3 +318,11 @@ closer together or shorten the gap in `KitchenLevelBuilder.Path`, or bump
 purpose (so it doesn't look like a piece of blocking furniture) — if that's
 confusing in practice, give it a placeholder material instead of disabling
 its renderer.
+
+## Quality-of-life: Restart button
+
+Both the Game Over and Level Complete screens now include a **Restart**
+button (reloads the scene) so you can retry without leaving Play mode —
+useful for a long testing session covering everything at once. Built by
+`CatAIBuilder.BuildRestartButton` (shared with `KitchenLevelBuilder`); no
+separate build step, it's part of `Build Cat AI` / `Build Kitchen Level`.

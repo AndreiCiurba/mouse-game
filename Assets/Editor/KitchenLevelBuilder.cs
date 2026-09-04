@@ -96,13 +96,24 @@ namespace MouseGame.EditorTools
                 return levelCompleteManager;
             }
 
-            GameObject textGO = FindChild(canvas.transform, "LevelCompleteText");
+            GameObject panelGO = FindChild(canvas.transform, "LevelCompletePanel");
             Text text;
-            if (textGO == null)
+            if (panelGO == null)
             {
-                textGO = new GameObject("LevelCompleteText", typeof(Text));
+                panelGO = new GameObject("LevelCompletePanel", typeof(RectTransform));
+                Undo.RegisterCreatedObjectUndo(panelGO, "Build Kitchen Level");
+                panelGO.transform.SetParent(canvas.transform, false);
+
+                RectTransform panelRect = panelGO.GetComponent<RectTransform>();
+                panelRect.anchorMin = new Vector2(0.5f, 0.5f);
+                panelRect.anchorMax = new Vector2(0.5f, 0.5f);
+                panelRect.pivot = new Vector2(0.5f, 0.5f);
+                panelRect.anchoredPosition = Vector2.zero;
+                panelRect.sizeDelta = new Vector2(600f, 220f);
+
+                GameObject textGO = new GameObject("LevelCompleteText", typeof(Text));
                 Undo.RegisterCreatedObjectUndo(textGO, "Build Kitchen Level");
-                textGO.transform.SetParent(canvas.transform, false);
+                textGO.transform.SetParent(panelGO.transform, false);
 
                 text = textGO.GetComponent<Text>();
                 text.text = "You escaped! Level Complete!";
@@ -111,19 +122,21 @@ namespace MouseGame.EditorTools
                 text.color = Color.green;
                 text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
 
-                RectTransform rt = textGO.GetComponent<RectTransform>();
-                rt.anchorMin = new Vector2(0.5f, 0.5f);
-                rt.anchorMax = new Vector2(0.5f, 0.5f);
-                rt.pivot = new Vector2(0.5f, 0.5f);
-                rt.anchoredPosition = Vector2.zero;
-                rt.sizeDelta = new Vector2(600f, 120f);
+                RectTransform textRect = textGO.GetComponent<RectTransform>();
+                textRect.anchorMin = new Vector2(0.5f, 1f);
+                textRect.anchorMax = new Vector2(0.5f, 1f);
+                textRect.pivot = new Vector2(0.5f, 1f);
+                textRect.anchoredPosition = Vector2.zero;
+                textRect.sizeDelta = new Vector2(600f, 120f);
+
+                CatAIBuilder.BuildRestartButton(panelGO.transform, new Vector2(0f, -140f));
             }
             else
             {
-                text = textGO.GetComponent<Text>();
+                text = panelGO.transform.Find("LevelCompleteText").GetComponent<Text>();
             }
 
-            SetSerializedField(winUI, "messagePanel", textGO);
+            SetSerializedField(winUI, "messagePanel", panelGO);
             SetSerializedField(winUI, "messageText", text);
 
             PlayerMotor motor = player.GetComponent<PlayerMotor>();

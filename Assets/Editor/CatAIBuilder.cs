@@ -4,6 +4,7 @@ using MouseGame.Player;
 using MouseGame.UI;
 using Unity.AI.Navigation;
 using UnityEditor;
+using UnityEditor.Events;
 using UnityEngine;
 using UnityEngine.AI;
 using UnityEngine.UI;
@@ -99,13 +100,24 @@ namespace MouseGame.EditorTools
                 return gameOverManager;
             }
 
-            GameObject textGO = FindChild(canvas.transform, "GameOverText");
+            GameObject panelGO = FindChild(canvas.transform, "GameOverPanel");
             Text text;
-            if (textGO == null)
+            if (panelGO == null)
             {
-                textGO = new GameObject("GameOverText", typeof(Text));
+                panelGO = new GameObject("GameOverPanel", typeof(RectTransform));
+                Undo.RegisterCreatedObjectUndo(panelGO, "Build Cat AI");
+                panelGO.transform.SetParent(canvas.transform, false);
+
+                RectTransform panelRect = panelGO.GetComponent<RectTransform>();
+                panelRect.anchorMin = new Vector2(0.5f, 0.5f);
+                panelRect.anchorMax = new Vector2(0.5f, 0.5f);
+                panelRect.pivot = new Vector2(0.5f, 0.5f);
+                panelRect.anchoredPosition = Vector2.zero;
+                panelRect.sizeDelta = new Vector2(600f, 220f);
+
+                GameObject textGO = new GameObject("GameOverText", typeof(Text));
                 Undo.RegisterCreatedObjectUndo(textGO, "Build Cat AI");
-                textGO.transform.SetParent(canvas.transform, false);
+                textGO.transform.SetParent(panelGO.transform, false);
 
                 text = textGO.GetComponent<Text>();
                 text.text = "Caught! Game Over";
@@ -114,19 +126,21 @@ namespace MouseGame.EditorTools
                 text.color = Color.red;
                 text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
 
-                RectTransform rt = textGO.GetComponent<RectTransform>();
-                rt.anchorMin = new Vector2(0.5f, 0.5f);
-                rt.anchorMax = new Vector2(0.5f, 0.5f);
-                rt.pivot = new Vector2(0.5f, 0.5f);
-                rt.anchoredPosition = Vector2.zero;
-                rt.sizeDelta = new Vector2(600f, 120f);
+                RectTransform textRect = textGO.GetComponent<RectTransform>();
+                textRect.anchorMin = new Vector2(0.5f, 1f);
+                textRect.anchorMax = new Vector2(0.5f, 1f);
+                textRect.pivot = new Vector2(0.5f, 1f);
+                textRect.anchoredPosition = Vector2.zero;
+                textRect.sizeDelta = new Vector2(600f, 120f);
+
+                BuildRestartButton(panelGO.transform, new Vector2(0f, -140f));
             }
             else
             {
-                text = textGO.GetComponent<Text>();
+                text = panelGO.transform.Find("GameOverText").GetComponent<Text>();
             }
 
-            SetSerializedField(gameOverUI, "messagePanel", textGO);
+            SetSerializedField(gameOverUI, "messagePanel", panelGO);
             SetSerializedField(gameOverUI, "messageText", text);
 
             PlayerMotor motor = player.GetComponent<PlayerMotor>();
@@ -178,6 +192,54 @@ namespace MouseGame.EditorTools
             SetSerializedField(catAI, "chaseSpeed", 0.8f);
 
             CatModelBuilder.BuildCatModel(cat.transform);
+        }
+
+        /// <summary>
+        /// A "Restart" button under the given parent that reloads the scene — so a Game
+        /// Over/Level Complete screen can be retried without leaving Play mode. Shared shape
+        /// used by both this builder and KitchenLevelBuilder.
+        /// </summary>
+        internal static void BuildRestartButton(Transform parent, Vector2 anchoredPosition)
+        {
+            if (parent.Find("RestartButton") != null)
+            {
+                return;
+            }
+
+            GameObject buttonGO = new GameObject("RestartButton", typeof(Image), typeof(Button));
+            Undo.RegisterCreatedObjectUndo(buttonGO, "Build Restart Button");
+            buttonGO.transform.SetParent(parent, false);
+
+            Image image = buttonGO.GetComponent<Image>();
+            image.color = new Color(1f, 1f, 1f, 0.8f);
+
+            RectTransform buttonRect = buttonGO.GetComponent<RectTransform>();
+            buttonRect.anchorMin = new Vector2(0.5f, 1f);
+            buttonRect.anchorMax = new Vector2(0.5f, 1f);
+            buttonRect.pivot = new Vector2(0.5f, 1f);
+            buttonRect.anchoredPosition = anchoredPosition;
+            buttonRect.sizeDelta = new Vector2(200f, 60f);
+
+            GameObject labelGO = new GameObject("Label", typeof(Text));
+            Undo.RegisterCreatedObjectUndo(labelGO, "Build Restart Button");
+            labelGO.transform.SetParent(buttonGO.transform, false);
+
+            Text label = labelGO.GetComponent<Text>();
+            label.text = "Restart";
+            label.alignment = TextAnchor.MiddleCenter;
+            label.color = Color.black;
+            label.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            label.raycastTarget = false;
+
+            RectTransform labelRect = labelGO.GetComponent<RectTransform>();
+            labelRect.anchorMin = Vector2.zero;
+            labelRect.anchorMax = Vector2.one;
+            labelRect.offsetMin = Vector2.zero;
+            labelRect.offsetMax = Vector2.zero;
+
+            var restart = buttonGO.AddComponent<RestartButton>();
+            Button button = buttonGO.GetComponent<Button>();
+            UnityEventTools.AddVoidPersistentListener(button.onClick, restart.Restart);
         }
 
         private static GameObject FindChild(Transform parent, string name)
