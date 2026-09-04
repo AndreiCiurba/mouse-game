@@ -13,35 +13,27 @@ Hub, install the Unity 6 LTS Editor with Android Build Support, then create the
 Once open, the Console should show `Assets/Scripts/...` importing with no errors
 (there's nothing to wire up yet, so no errors expected here).
 
-## 2. Build the test room (Editor)
+## 2-5. Room, player, objective UI, pickup item — automated
 
-In the default `SampleScene` (rename it to `Prototype` under `Assets/Scenes/` if you
-like — matches the suggested project structure):
+Everything is built by one-click Editor tools now (`Assets/Editor/*.cs`, under the
+**Mouse Game** menu). Run them in this order — each saves the scene to disk when
+it finishes, and each is safe to re-run (idempotent: re-running just re-syncs
+values, it won't create duplicates):
 
-1. Delete the sample objects you don't need, keep the **Directional Light**.
-2. **Floor:** GameObject → 3D Object → Plane. Scale to roughly `(3, 1, 3)` so it's a
-   reasonably sized room floor.
-3. **Walls:** GameObject → 3D Object → Cube, ×4. Scale/position them around the
-   floor's edges to box the room in (thin, tall cubes). Exact dimensions don't
-   matter for MVP.
-4. Optionally add a couple of Cube "furniture" placeholders (box, table) sitting
-   around — not required for movement-only MVP, but harmless to rough in now
-   since Milestone 2 (climbing) will want them.
+1. **Mouse Game → Build Test Room** — floor + 4 walls spanning roughly
+   `x: -4..4, z: -4..4`, sized to enclose everything the other tools place.
+2. **Mouse Game → Build MVP Scene (Player + Objective)** — `Player`
+   (CharacterController + capsule body + camera + scripts), `GameManager` with the
+   objective UI Canvas/text, and a `Cheese` pickup near `(1, 0.3, 1)`.
+3. **Mouse Game → Build Stairs Test (Milestone 2)** — a 5-step staircase near
+   `(-1.5, *, 0..~2.8)` (see below).
 
-## 3-5. Player, objective UI, pickup item — automated
-
-Instead of doing steps 3-5 by hand, use the `Mouse Game → Build MVP Scene (Player +
-Objective)` menu item (from `Assets/Editor/MvpSceneBuilder.cs`). It builds the
-`Player` (CharacterController + capsule body + camera + scripts), the `GameManager`
-with the objective UI Canvas/text, and a `Cheese` pickup, wiring every Inspector
-reference for you. It only touches those objects — build the room (step 2) by hand
-first. Safe to re-run if you tweak scripts and want to re-wire.
-
-The `Cheese` pickup lands near the world origin (`(1, 0.3, 1)`); drag it in the
-Scene view afterward if that's outside your room or inside a wall.
+If you reposition anything by hand afterward (dragging in the Scene view), press
+**Ctrl+S** — the tools only auto-save at the moment they run, not on later manual
+edits.
 
 The manual steps below are kept for reference (e.g. if you want to understand what
-the tool did, or wire things up differently by hand).
+the tools did, or wire things up differently by hand).
 
 ## 3. Set up the player (Editor)
 
@@ -107,21 +99,11 @@ That's the full MVP loop: move around a room, find the item.
 
 No custom climb script — this version leans entirely on
 `CharacterController.stepOffset` (Unity's built-in "walk up small steps
-automatically" behavior) plus a normal, always-available jump.
-
-First, re-run **Mouse Game → Build MVP Scene (Player + Objective)** (safe to
-re-run) — it now:
-- Sets `Player`'s `CharacterController.stepOffset = 0.3` explicitly.
-- Sets `PlayerMotor.jumpHeight = 0.9` (a real, always-on jump — no gating).
-- Cleans up the old E-climb prototype's leftovers (`ClimbBox`/`ClimbTable`/
-  `ClimbPromptText` objects and any now-missing `PlayerClimb`/`ClimbPromptUI`
-  script references on `Player`/`GameManager`).
-
-Then use **Mouse Game → Build Stairs Test (Milestone 2)** (from
-`Assets/Editor/StairsTestBuilder.cs`) to add a 5-step staircase (0.2m per step,
-under the 0.3m step offset) leading up to a landing platform, near
-`(-1.5, *, 0..~2.8)`. Drag the whole `Stair01..05` + `StairLanding` group into
-your room if it lands outside your walls.
+automatically" behavior, set to `0.3` by `Build MVP Scene`) plus a normal,
+always-available jump (`PlayerMotor.jumpHeight = 0.9`, no gating). Built by
+**Mouse Game → Build Stairs Test (Milestone 2)** (step 3 above): a 5-step
+staircase (0.2m per step, under the 0.3m step offset) leading up to a landing
+platform.
 
 **How it works:** nothing to detect or trigger — just walk into the stairs and
 `CharacterController` steps you up each tread as part of normal movement,
