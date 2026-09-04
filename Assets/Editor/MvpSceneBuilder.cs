@@ -54,6 +54,12 @@ namespace MouseGame.EditorTools
             player.transform.position = new Vector3(0f, 1f, 0f);
             player.tag = "Player";
 
+            int playerLayer = EnsurePlayerLayer();
+            if (playerLayer >= 0)
+            {
+                player.layer = playerLayer;
+            }
+
             CharacterController controller = GetOrAddComponent<CharacterController>(player);
             // Steps shorter than this are walked up automatically as part of normal movement —
             // this is what makes stairs work with no custom script at all. Keep individual
@@ -62,9 +68,15 @@ namespace MouseGame.EditorTools
 
             inputReader = GetOrAddComponent<PlayerInputReader>(player);
             PlayerMotor motor = GetOrAddComponent<PlayerMotor>(player);
-            // Force this even on a pre-existing PlayerMotor, in case an older build left a
-            // different value here.
+            // Force these even on a pre-existing PlayerMotor, in case an older build left
+            // different values here.
             SetSerializedField(motor, "jumpHeight", 0.9f);
+            if (playerLayer >= 0)
+            {
+                // Exclude the Player's own layer from its ground check, or CheckGrounded can
+                // detect the Player's own CharacterController collider instead of real ground.
+                SetSerializedField(motor, "groundMask", ~(1 << playerLayer));
+            }
 
             // Visible capsule body (CharacterController itself is invisible).
             GameObject body = FindChild(player.transform, "Body");
@@ -185,6 +197,49 @@ namespace MouseGame.EditorTools
         }
 
         /// <summary>
+        /// Finds or creates a "Player" user layer (indices 8-31) in TagManager.asset, so
+        /// PlayerMotor's ground check can exclude the Player's own collider by layer mask
+        /// instead of by fragile geometry tricks. Returns -1 (with a warning) if no free slot
+        /// exists, in which case the ground check falls back to checking every layer.
+        /// </summary>
+        private static int EnsurePlayerLayer()
+        {
+            const string playerLayerName = "Player";
+            var tagManagerAssets = AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/TagManager.asset");
+            if (tagManagerAssets.Length == 0)
+            {
+                Debug.LogWarning("MvpSceneBuilder: couldn't open TagManager.asset to create a 'Player' layer.");
+                return -1;
+            }
+
+            var tagManager = new SerializedObject(tagManagerAssets[0]);
+            SerializedProperty layers = tagManager.FindProperty("layers");
+
+            for (int i = 8; i < layers.arraySize; i++)
+            {
+                if (layers.GetArrayElementAtIndex(i).stringValue == playerLayerName)
+                {
+                    return i;
+                }
+            }
+
+            for (int i = 8; i < layers.arraySize; i++)
+            {
+                SerializedProperty layerProp = layers.GetArrayElementAtIndex(i);
+                if (string.IsNullOrEmpty(layerProp.stringValue))
+                {
+                    layerProp.stringValue = playerLayerName;
+                    tagManager.ApplyModifiedProperties();
+                    return i;
+                }
+            }
+
+            Debug.LogWarning("MvpSceneBuilder: no free layer slot for 'Player' (layers 8-31 all in " +
+                              "use) — ground check will scan every layer, which risks self-detection.");
+            return -1;
+        }
+
+        /// <summary>
         /// Removes leftovers from the earlier E-climb prototype (now replaced by automatic
         /// stair-stepping): the ClimbBox/ClimbTable/ClimbPromptText test objects, and any
         /// "Missing Script" components left behind on Player/GameManager now that
@@ -277,6 +332,21 @@ namespace MouseGame.EditorTools
             }
 
             prop.floatValue = value;
+            so.ApplyModifiedProperties();
+        }
+
+        private static void SetSerializedField(Object target, string fieldName, int value)
+        {
+            var so = new SerializedObject(target);
+            SerializedProperty prop = so.FindProperty(fieldName);
+            if (prop == null)
+            {
+                Debug.LogError($"MvpSceneBuilder: field '{fieldName}' not found on {target.GetType().Name}.");
+                return;
+            }
+
+            // LayerMask fields serialize as a plain int bitmask.
+            prop.intValue = value;
             so.ApplyModifiedProperties();
         }
     }

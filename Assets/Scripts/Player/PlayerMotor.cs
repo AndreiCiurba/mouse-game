@@ -22,8 +22,17 @@ namespace MouseGame.Player
         [Header("Jump / Gravity")]
         [SerializeField] private float jumpHeight = 0.9f;
         [SerializeField] private float gravity = -20f;
-        [Tooltip("Small downward force applied while grounded so CharacterController.isGrounded stays reliable.")]
+        [Tooltip("Small downward force applied while grounded to keep the character settled onto the floor.")]
         [SerializeField] private float groundedStickForce = -2f;
+
+        [Header("Ground Check")]
+        [Tooltip("CharacterController.isGrounded is unreliable on flat/open ground (it can flicker " +
+                 "false with nothing nearby to help register contact, while feeling fine next to " +
+                 "walls/steps) — so grounding uses an explicit overlap check instead.")]
+        [SerializeField] private float groundCheckDistance = 0.15f;
+        [Tooltip("Should exclude the Player's own layer, or the check can detect itself. " +
+                 "MvpSceneBuilder sets this to everything except the auto-created 'Player' layer.")]
+        [SerializeField] private LayerMask groundMask = ~0;
 
         private CharacterController controller;
         private PlayerInputReader input;
@@ -52,7 +61,7 @@ namespace MouseGame.Player
 
         private void ApplyVerticalMovement()
         {
-            bool grounded = controller.isGrounded;
+            bool grounded = CheckGrounded();
 
             if (grounded && verticalVelocity < 0f)
             {
@@ -67,6 +76,16 @@ namespace MouseGame.Player
 
             verticalVelocity += gravity * Time.deltaTime;
             controller.Move(new Vector3(0f, verticalVelocity * Time.deltaTime, 0f));
+        }
+
+        private bool CheckGrounded()
+        {
+            float halfHeight = controller.height * 0.5f;
+            Vector3 feet = transform.position
+                + Vector3.up * (controller.center.y - halfHeight)
+                - Vector3.up * groundCheckDistance;
+
+            return Physics.CheckSphere(feet, controller.radius * 0.9f, groundMask, QueryTriggerInteraction.Ignore);
         }
     }
 }
