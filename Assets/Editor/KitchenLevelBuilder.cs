@@ -35,8 +35,16 @@ namespace MouseGame.EditorTools
             ("KitchenCountertop", 0.62f, PathX, 3.235f, 0.35f, 0.35f),
         };
 
-        /// <summary>Where a guarding cat should stand — the floor at the base of the path. Exposed so CatAIBuilder can use the same spot instead of hardcoding a duplicate.</summary>
-        internal static readonly Vector3 GuardPosition = new Vector3(PathX, 0f, 2.75f);
+        /// <summary>
+        /// Where a guarding cat should stand — open floor beside the path, not the same X as it.
+        /// The furniture blocks are solid from the floor up to their top (BuildBlock spans
+        /// y: 0..topHeight, not a thin floating platform), so a guard position at PathX would
+        /// land inside/under a piece of furniture (found this placing the cat directly inside
+        /// KitchenTable's footprint). Offset clears the widest footprint (Countertop, half-size
+        /// 0.175) plus the cat's own radius (0.15) with margin. Exposed so CatAIBuilder can use
+        /// the same spot instead of hardcoding a duplicate.
+        /// </summary>
+        internal static readonly Vector3 GuardPosition = new Vector3(PathX + 0.5f, 0f, 2.75f);
 
         private const float CabinetX = -3.5f;
         private const float CabinetZ = 2f;
