@@ -35,6 +35,9 @@ namespace MouseGame.EditorTools
             ("KitchenCountertop", 0.62f, PathX, 3.235f, 0.35f, 0.35f),
         };
 
+        /// <summary>Where a guarding cat should stand — the floor at the base of the path. Exposed so CatAIBuilder can use the same spot instead of hardcoding a duplicate.</summary>
+        internal static readonly Vector3 GuardPosition = new Vector3(PathX, 0f, 2.75f);
+
         private const float CabinetX = -3.5f;
         private const float CabinetZ = 2f;
 
@@ -198,7 +201,7 @@ namespace MouseGame.EditorTools
             // Guard the floor at the base of the traversal path (the cat can't jump/climb the
             // furniture itself). CatAI reads its spawn/patrol center from transform.position at
             // Awake(), so just moving it here is enough.
-            cat.transform.position = new Vector3(PathX, 0f, 2.75f);
+            cat.transform.position = GuardPosition;
         }
 
         private static void BuildBlock(string name, Vector3 position, Vector3 scale)

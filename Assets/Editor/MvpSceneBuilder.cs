@@ -207,10 +207,18 @@ namespace MouseGame.EditorTools
                 Undo.RegisterCreatedObjectUndo(cheese, "Build MVP Scene");
             }
 
-            // Mouse-scale sizing/placement — force this even on a pre-existing Cheese, since an
-            // older build's human-scale cheese (0.3 scale) would now be bigger than the mouse.
-            cheese.transform.position = new Vector3(0.3f, 0.05f, 0.3f);
+            // Mouse-scale sizing — force this even on a pre-existing Cheese, since an older
+            // build's human-scale cheese (0.3 scale) would now be bigger than the mouse.
             cheese.transform.localScale = Vector3.one * 0.08f;
+
+            // Only use the default test position if Build Kitchen Level hasn't already placed
+            // the cheese on the countertop — otherwise re-running this tool afterward (e.g. to
+            // pick up an unrelated Player fix) would silently yank the cheese back off the
+            // counter with no indication why.
+            if (GameObject.Find("KitchenCountertop") == null)
+            {
+                cheese.transform.position = new Vector3(0.3f, 0.05f, 0.3f);
+            }
 
             Collider col = cheese.GetComponent<Collider>();
             if (col != null)

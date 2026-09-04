@@ -161,7 +161,13 @@ namespace MouseGame.EditorTools
                 Undo.RegisterCreatedObjectUndo(cat, "Build Cat AI");
             }
 
-            cat.transform.position = new Vector3(2f, 0f, -2f);
+            // Use the Kitchen Level's guard spot if it's already built, instead of the default
+            // test spawn — otherwise re-running this tool afterward (e.g. to rebake the NavMesh,
+            // which SETUP.md explicitly recommends doing after Build Kitchen Level) would
+            // silently undo that repositioning back to a spot that doesn't guard anything.
+            cat.transform.position = GameObject.Find("KitchenCountertop") != null
+                ? KitchenLevelBuilder.GuardPosition
+                : new Vector3(2f, 0f, -2f);
 
             NavMeshAgent agent = GetOrAddComponent<NavMeshAgent>(cat);
             agent.radius = 0.15f;

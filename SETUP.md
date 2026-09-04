@@ -321,7 +321,11 @@ replace, the generic stairs/hiding-spot test props elsewhere in the room.
    path too) — builds the furniture path at `x=-3.3, z=2.1..3.41`, moves
    `Cheese` onto the countertop, adds an invisible `EscapeZone` trigger near
    the cabinet, and repositions `Cat` to `(-3.3, 0, 2.75)` (the floor at the
-   base of the path — it can't jump/climb the furniture itself).
+   base of the path — it can't jump/climb the furniture itself). It's safe to
+   re-run **Build MVP Scene** or **Build Cat AI** afterward for unrelated
+   reasons (e.g. picking up a Player fix, or rebaking the NavMesh) — both now
+   detect the kitchen level and leave the Cheese/Cat placements alone instead
+   of resetting them back to their generic test-room spots.
 2. If you'd already built `Cat AI` before this, re-run **Build Cat AI**
    afterward too — it re-bakes the NavMesh, which should now account for the
    new furniture blocking/shaping paths through that area.
