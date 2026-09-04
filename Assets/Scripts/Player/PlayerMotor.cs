@@ -1,3 +1,4 @@
+using System;
 using MouseGame.Input;
 using UnityEngine;
 
@@ -45,11 +46,22 @@ namespace MouseGame.Player
                  "MvpSceneBuilder sets this to everything except the auto-created 'Player' layer.")]
         [SerializeField] private LayerMask groundMask = ~0;
 
+        /// <summary>True on whatever frame CheckGrounded() last passed (respects the post-jump ignore window).</summary>
+        public bool IsGrounded { get; private set; }
+
+        /// <summary>Fires the instant a jump impulse is applied — NoiseEmitter listens for this.</summary>
+        public event Action Jumped;
+
+        /// <summary>Fires the frame the character transitions from airborne to grounded — NoiseEmitter listens for this.</summary>
+        public event Action Landed;
+
         private CharacterController controller;
         private PlayerInputReader input;
         private float verticalVelocity;
         private int jumpsUsedSinceGrounded;
         private float groundedIgnoreTimer;
+        private bool wasGroundedLastFrame;
+        private bool hasCheckedGroundedOnce;
 
         private void Awake()
         {
@@ -76,6 +88,15 @@ namespace MouseGame.Player
         {
             groundedIgnoreTimer -= Time.deltaTime;
             bool grounded = groundedIgnoreTimer <= 0f && CheckGrounded();
+            IsGrounded = grounded;
+
+            // Skip the very first check so landing at spawn doesn't fire a spurious Landed event.
+            if (grounded && !wasGroundedLastFrame && hasCheckedGroundedOnce)
+            {
+                Landed?.Invoke();
+            }
+            wasGroundedLastFrame = grounded;
+            hasCheckedGroundedOnce = true;
 
             if (grounded)
             {
@@ -93,6 +114,7 @@ namespace MouseGame.Player
                 verticalVelocity = Mathf.Sqrt(jumpHeight * -2f * gravity);
                 jumpsUsedSinceGrounded++;
                 groundedIgnoreTimer = postJumpGroundedIgnoreTime;
+                Jumped?.Invoke();
             }
 
             verticalVelocity += gravity * Time.deltaTime;

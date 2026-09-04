@@ -21,8 +21,11 @@ namespace MouseGame.AI
         private enum State { Idle, Patrol, InvestigateNoise, Chase, Search }
 
         [Header("Speeds")]
-        [SerializeField] private float patrolSpeed = 0.6f;
-        [SerializeField] private float chaseSpeed = 1.4f;
+        [Tooltip("Kept below PlayerMotor's walkSpeed/sprintSpeed (0.5/0.9) on purpose - the cat " +
+                 "should never be able to catch you if you're moving, only if you stand still, " +
+                 "get cornered, or don't notice it in time.")]
+        [SerializeField] private float patrolSpeed = 0.4f;
+        [SerializeField] private float chaseSpeed = 0.8f;
 
         [Header("Idle / Patrol")]
         [SerializeField] private float idleDuration = 2f;

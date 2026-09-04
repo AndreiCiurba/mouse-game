@@ -90,6 +90,9 @@ namespace MouseGame.EditorTools
                 SetSerializedField(motor, "groundMask", ~(1 << playerLayer));
             }
 
+            // Noise radii (walking/sprinting/jumping/landing) that CatHearing reads from.
+            GetOrAddComponent<NoiseEmitter>(player);
+
             // Drop the old plain-capsule "Body" from earlier milestones — replaced below by an
             // actual (primitive-assembled) mouse shape now that scale makes the difference visible.
             GameObject oldBody = FindChild(player.transform, "Body");

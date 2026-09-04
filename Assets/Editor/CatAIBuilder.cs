@@ -172,6 +172,10 @@ namespace MouseGame.EditorTools
             GetOrAddComponent<CatHearing>(cat);
             CatAI catAI = GetOrAddComponent<CatAI>(cat);
             SetSerializedField(catAI, "gameOverManager", gameOverManager);
+            // Force these even on a pre-existing CatAI, in case an older build left different
+            // values here — must stay below PlayerMotor's walkSpeed (0.5) / sprintSpeed (0.9).
+            SetSerializedField(catAI, "patrolSpeed", 0.4f);
+            SetSerializedField(catAI, "chaseSpeed", 0.8f);
 
             CatModelBuilder.BuildCatModel(cat.transform);
         }
@@ -208,6 +212,25 @@ namespace MouseGame.EditorTools
             }
 
             prop.objectReferenceValue = value;
+            so.ApplyModifiedProperties();
+        }
+
+        private static void SetSerializedField(Object target, string fieldName, float value)
+        {
+            if (target == null)
+            {
+                return;
+            }
+
+            var so = new SerializedObject(target);
+            SerializedProperty prop = so.FindProperty(fieldName);
+            if (prop == null)
+            {
+                Debug.LogError($"CatAIBuilder: field '{fieldName}' not found on {target.GetType().Name}.");
+                return;
+            }
+
+            prop.floatValue = value;
             so.ApplyModifiedProperties();
         }
     }

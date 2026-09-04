@@ -231,6 +231,7 @@ on `CatAI`/`CatVision`/`CatHearing`, easy to adjust once you've felt it. The
 NavMesh is baked at Unity's default "Humanoid" scale rather than true
 cat-scale (see the comment atop `CatAIBuilder.cs` for why) — the cat may not
 hug walls as tightly as it ideally would, but should still navigate the room
+correctly.
 
 ### Hiding spots
 
@@ -245,4 +246,28 @@ where the model's eyes actually are).
 **Important ordering:** run **Build Hiding Spots**, then re-run **Build Cat AI
 (Milestone 5)** — the NavMesh was baked before these obstacles existed, so the
 cat's pathing won't know to route around them until it's rebaked.
-correctly.
+
+## Milestone 6 — Sound / stealth
+
+`PlayerMotor` now fires `Jumped`/`Landed` events; `NoiseEmitter` (on `Player`,
+wired automatically by `Build MVP Scene`) turns movement into a noise radius:
+0 while idle, small while walking, larger while sprinting, and a brief larger
+pulse on jump/land. `CatHearing.CanHearPlayer` reads that radius instead of
+the flat proximity check it started as — no changes needed anywhere else,
+that's exactly what having a stable method signature there was for.
+
+"Knocking a prop = loud" from the README isn't wired up — there's no
+prop-interaction system yet to trigger it. `NoiseEmitter.EmitNoise(radius)` is
+the hook for whenever one exists; `CatHearing` won't need to change.
+
+No new build step — re-run **Build MVP Scene** to add `NoiseEmitter` to an
+existing `Player` if it's not already there (safe/idempotent, same as always).
+
+**Test:** stand still near the cat's patrol path — it shouldn't notice you
+from sound alone at normal patrol distances (only sight, or if you're inside
+`walkNoiseRadius`/`sprintNoiseRadius` of it). Sprint past it (not in its
+vision cone) — it should be able to hear and investigate from further away
+than a walk would allow. Jump/land near it — same, a brief noticeable pulse.
+Noise radii (`walkNoiseRadius`, `sprintNoiseRadius`, `jumpNoiseRadius`,
+`landNoiseRadius` on `NoiseEmitter`) are untested guesses, easy to tune once
+you've felt it.

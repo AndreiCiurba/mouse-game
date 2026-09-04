@@ -1,18 +1,16 @@
+using MouseGame.Player;
 using UnityEngine;
 
 namespace MouseGame.AI
 {
     /// <summary>
-    /// Stand-in for real hearing: a flat proximity check. Milestone 6's noise/stealth system
-    /// (walking = quiet, sprinting/jumping/landing = noticeable) will replace this with an
-    /// actual noise-level/radius check — CatAI's usage (CanHearPlayer) shouldn't need to change
-    /// when that happens, just this method's internals.
+    /// Hears the player based on their current noise radius (NoiseEmitter) — walking is quiet,
+    /// sprinting/jumping/landing carry further — rather than a flat distance check.
     /// </summary>
     public class CatHearing : MonoBehaviour
     {
-        [SerializeField] private float hearingRadius = 1f;
-
         private Transform player;
+        private NoiseEmitter noiseEmitter;
 
         private void Awake()
         {
@@ -20,19 +18,26 @@ namespace MouseGame.AI
             if (playerGO != null)
             {
                 player = playerGO.transform;
+                noiseEmitter = playerGO.GetComponent<NoiseEmitter>();
             }
         }
 
         public bool CanHearPlayer(out Vector3 playerPosition)
         {
             playerPosition = default;
-            if (player == null)
+            if (player == null || noiseEmitter == null)
+            {
+                return false;
+            }
+
+            float noiseRadius = noiseEmitter.CurrentNoiseRadius;
+            if (noiseRadius <= 0f)
             {
                 return false;
             }
 
             float distance = Vector3.Distance(transform.position, player.position);
-            if (distance > hearingRadius)
+            if (distance > noiseRadius)
             {
                 return false;
             }
