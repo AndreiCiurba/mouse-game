@@ -279,3 +279,42 @@ than a walk would allow. Jump/land near it — same, a brief noticeable pulse.
 Noise radii (`walkNoiseRadius`, `sprintNoiseRadius`, `jumpNoiseRadius`,
 `landNoiseRadius` on `NoiseEmitter`) are untested guesses, easy to tune once
 you've felt it.
+
+## First Complete Level — Kitchen
+
+The README's actual target level: cabinet (start) → box → chair → table →
+countertop, cheese on the countertop, the cat guarding the path, and a real
+**escape** step — reaching the cheese alone no longer ends anything, you have
+to get back to the start.
+
+Unlike the stairs test (auto-climbed via `stepOffset`), each hop here is a
+**genuine jump** — the height gaps (0.12/0.16/0.17/0.17) exceed `stepOffset`
+(0.04) and rely on `PlayerMotor.jumpHeight` (0.22) to actually clear them.
+This coexists with, doesn't replace, the generic stairs/hiding-spot test props
+elsewhere in the room.
+
+1. Run **Mouse Game → Build Kitchen Level** (after Build MVP Scene, Build Test
+   Room, and ideally Build Cat AI so the cat gets repositioned to guard the
+   path too) — builds the furniture path near `(-3.5..-2.1, *, 2..3.4)`, moves
+   `Cheese` onto the countertop, adds an invisible `EscapeZone` trigger near
+   the cabinet, and repositions `Cat` to `(-2.85, 0, 2.9)`.
+2. If you'd already built `Cat AI` before this, re-run **Build Cat AI**
+   afterward too — it re-bakes the NavMesh, which should now account for the
+   new furniture blocking/shaping paths through that area.
+3. Press Play.
+
+**Test:** climb the path (box → chair → table → countertop) via jumping —
+each gap should be reachable but require an actual jump, not just walking
+into it. Grab the cheese ("Found it!" should appear, same as before). Try
+walking into the escape zone *before* grabbing the cheese — nothing should
+happen. Then return to the escape zone after grabbing it — "You escaped!
+Level Complete!" should appear and movement should freeze. Avoid/lose the cat
+somewhere in there for the full experience.
+
+**Known rough edges:** the furniture positions/gap sizes are a first pass with
+no live testing — if a jump doesn't quite reach, nudge the relevant block
+closer together or shorten the gap in `KitchenLevelBuilder.Path`, or bump
+`PlayerMotor.jumpHeight` slightly. The escape zone's collider is invisible on
+purpose (so it doesn't look like a piece of blocking furniture) — if that's
+confusing in practice, give it a placeholder material instead of disabling
+its renderer.

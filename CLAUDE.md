@@ -4,12 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project state
 
-The Unity project is scaffolded (Universal 3D/URP template) and Milestone 1 (player
-movement + a find-the-item objective) is working. Milestone 2 (traversal) is in
-progress, implemented as stairs (`CharacterController.stepOffset`) plus an
-always-on jump — see "Development approach" below for how this diverges from the
-README's original climb-button design. Do not jump ahead to later milestones
-before earlier ones are solid.
+The Unity project is scaffolded (Universal 3D/URP template) and all 6 of the
+README's numbered milestones plus the "First Complete Level" (kitchen) are built —
+see "Development approach" below for how each one diverges from the README's
+original sketch (climb button replaced with stairs, primitive placeholders instead
+of Blender models, NavMesh baked at Humanoid scale, etc.). Most of it is untested
+or only lightly tested; treat "built" as "implemented, not "verified."
 
 Most of `Assets/Scripts/**` scene wiring (Player, camera, objective UI, pickup
 item, test props) is done via one-click Editor tools in `Assets/Editor/` (`Mouse
@@ -43,7 +43,7 @@ Work through milestones **in order**, keeping a playable build at every stage:
 5. Cat AI — NavMesh-based enemy with a state machine: Idle → Patrol → Sees/Hears Player → Chase → (player escapes) Search → (found again) Chase → (caught) Game Over. Keep states modular (Idle, Patrol, InvestigateNoise, Chase, Search, Attack) for future expansion. No machine learning. **Done, built via `CatAI`/`CatVision`/`CatHearing`/`GameOverManager` (`Assets/Scripts/AI`, `Assets/Scripts/Game`) + the `Build Cat AI` Editor tool**. States are per-method inside one `CatAI` component (an enum switch), not separate state classes/objects — simplest version that still keeps states distinct; promote to a real state-object pattern only if this switch gets unwieldy. Patrol/chase speeds are kept below `PlayerMotor`'s walk/sprint speeds on purpose — the cat should never out-move a moving player, only catch one that stands still or gets cornered. The NavMesh is baked with Unity's default "Humanoid" agent type (radius 0.5) rather than a custom cat-sized one — registering a new agent type has no reliable Editor-script API, and the room being human-scale already comfortably contains a cat-sized `NavMeshAgent` (radius/height set directly on the agent); the cat just won't hug walls as tightly as a true cat-scale bake would allow. `HidingSpotsBuilder` scatters solid cover blocks (taller than `CatVision`'s eye point) around the room — `CatVision` already treats any solid collider as blocking line of sight, so no extra script was needed for that.
 6. Sound/stealth system — noise levels (walking = quiet, sprinting/jumping/landing = noticeable, knocking a prop = loud); cats detect noise within a radius and investigate. **Done** (except "knocking a prop" — no prop-interaction system exists yet to trigger it): `PlayerMotor` exposes `Jumped`/`Landed` events; `NoiseEmitter` (on `Player`) turns movement state into `CurrentNoiseRadius` (0 when idle, small when walking, larger when sprinting or on a brief jump/land pulse) and exposes `EmitNoise()` as the hook a future prop system can call without `CatHearing` needing to change. `CatHearing.CanHearPlayer` now reads that radius instead of the flat proximity check it started as. This noise mechanic is silent by design (a gameplay radius, not audio) — separately, `PlayerAudio` (also on `Player`) plays actual placeholder SFX on the same `PlayerMotor` events via `MouseGame.Audio.ProceduralAudio`, which generates short tones/noise-bursts in code since no real audio asset files exist in the project. Same "primitives until real content" reasoning as the models, applied to audio.
 
-First complete level: one kitchen room, objective "steal the cheese and escape," traversal path from under a cabinet → box → chair → table → countertop, avoiding the cat, with win/lose states.
+First complete level: one kitchen room, objective "steal the cheese and escape," traversal path from under a cabinet → box → chair → table → countertop, avoiding the cat, with win/lose states. **Done, built via `KitchenLevelBuilder`**: places the furniture path (each hop's height gap exceeds `stepOffset`, so these are genuine jumps, not auto-climbed steps like the stairs test), moves `Cheese` onto the countertop, repositions `Cat` to guard the path, and adds `EscapeZone`/`LevelCompleteManager`/`LevelCompleteUI` (`Assets/Scripts/Interaction`, `Assets/Scripts/Game`, `Assets/Scripts/UI`) — the win-state mirror of `GameOverManager`/`GameOverUI`. `EscapeZone` is a no-op trigger until `ObjectiveManager.ObjectiveComplete` is true, so reaching the cheese alone doesn't end the level; the player has to make it back. This coexists with (doesn't replace) the generic test props (`StairsTestBuilder`, `HidingSpotsBuilder`) elsewhere in the room — those stay useful for isolated mechanic testing.
 
 ## Architecture
 
