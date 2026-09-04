@@ -1,356 +1,243 @@
-# MVP 1 Setup — Move Around a Room + Find the Item
+# Setup — Building and Testing the Scene
 
-This covers taking the repo from "just scripts" to a playable scene. Steps marked
-**(Editor)** must be done by hand in the Unity Editor — Claude Code can't drive the
-Editor GUI directly.
+Everything gameplay-related is built by one-click Editor tools
+(`Assets/Editor/*.cs`, under the **Mouse Game** menu) rather than by hand.
+Each tool saves the scene to disk when it finishes and is safe to re-run
+(idempotent — re-running just re-syncs values/positions, it won't create
+duplicates). If you reposition anything by hand afterward (dragging in the
+Scene view), press **Ctrl+S** — the tools only auto-save at the moment they
+run, not on later manual edits.
 
 ## 1. Install Unity & create the project (Editor)
 
-Covered in [`UNITY_INSTALL_GUIDE.md`](./UNITY_INSTALL_GUIDE.md) — install Unity
-Hub, install the Unity 6 LTS Editor with Android Build Support, then create the
-`mouse-game` project pointed at this folder.
+Covered in [`UNITY_INSTALL_GUIDE.md`](./UNITY_INSTALL_GUIDE.md) — install
+Unity Hub, install the Unity 6 LTS Editor with Android Build Support, then
+create the `mouse-game` project pointed at this folder.
 
-Once open, the Console should show `Assets/Scripts/...` importing with no errors
-(there's nothing to wire up yet, so no errors expected here).
+## 2. Full build order
 
-## 2-5. Room, player, objective UI, pickup item — automated
+Run these in order, once, from a fresh/empty scene:
 
-Everything is built by one-click Editor tools now (`Assets/Editor/*.cs`, under the
-**Mouse Game** menu). Run them in this order — each saves the scene to disk when
-it finishes, and each is safe to re-run (idempotent: re-running just re-syncs
-values, it won't create duplicates):
-
-1. **Mouse Game → Build Test Room** — floor + 4 walls spanning roughly
-   `x: -4..4, z: -4..4`, sized to enclose everything the other tools place.
+1. **Mouse Game → Build Test Room** — floor + 4 walls, `x: -4..4, z: -4..4`.
 2. **Mouse Game → Build MVP Scene (Player + Objective)** — `Player`
-   (CharacterController + capsule body + camera + scripts), `GameManager` with the
-   objective UI Canvas/text, and a `Cheese` pickup near `(1, 0.3, 1)`.
-3. **Mouse Game → Build Stairs Test (Milestone 2)** — a 5-step staircase near
-   `(-1.5, *, 0..~2.8)` (see below).
+   (mouse-scale CharacterController + primitive mouse model + camera +
+   scripts), `GameManager` with the objective UI, `Cheese`.
+3. **Mouse Game → Build Kitchen Level** — the actual target level: furniture
+   traversal path, cheese moved onto the countertop, escape zone.
+4. **Mouse Game → Build Stairs Test (Milestone 2)** — generic stairs
+   mechanic test, separate from the kitchen path.
+5. **Mouse Game → Build Hiding Spots** — cover blocks that break line of
+   sight.
+6. **Mouse Game → Build Knockable Props** — clutter that emits a loud noise
+   when bumped.
+7. **Mouse Game → Build Cat AI (Milestone 5)** — run this **last** among the
+   gameplay builders: it bakes the NavMesh from whatever's in the scene at
+   that moment, and detects/guards the Kitchen Level path if it already
+   exists. Running it last means one bake sees all the final geometry, no
+   re-bake step needed.
+8. **Mouse Game → Build Mobile Controls (Milestone 3)** — only if you're
+   testing touch controls; screen-space UI, order-independent otherwise.
 
-If you reposition anything by hand afterward (dragging in the Scene view), press
-**Ctrl+S** — the tools only auto-save at the moment they run, not on later manual
-edits.
+If you ever re-run an earlier tool afterward (e.g. `Build MVP Scene` again
+to pick up a Player fix), it's safe — `Build Kitchen Level`'s Cheese/Cat
+placements are preserved rather than reset. Re-running `Build Cat AI` after
+adding *new* geometry (e.g. running `Build Hiding Spots` again with
+different props) does re-bake the NavMesh, which is correct.
 
-The manual steps below are kept for reference (e.g. if you want to understand what
-the tools did, or wire things up differently by hand).
+## 3. Verification checklist
 
-## 3. Set up the player (Editor)
+See the very end of this file for the full "what to test, and how" list
+covering everything below in one pass.
 
-1. GameObject → Create Empty, name it `Player`. Position it above the floor,
-   e.g. `(0, 1, 0)`.
-2. Add components to `Player`:
-   - **Character Controller** (leave defaults; radius ~0.5, height ~2 is fine for
-     a placeholder capsule scale).
-   - `PlayerInputReader` (from `Assets/Scripts/Input`)
-   - `PlayerMotor` (from `Assets/Scripts/Player`)
-   - Tag it **Player** (Inspector top-left Tag dropdown → Player; this is what
-     `CollectibleItem` checks against).
-3. For a visible capsule body: GameObject → 3D Object → Capsule as a **child** of
-   `Player`, positioned so its center matches the CharacterController's center.
-   Remove the Capsule's own Capsule Collider (the parent's Character Controller
-   already handles collision) to avoid double colliders.
-4. Add a **Camera** as a child of `Player`, positioned near the top of the capsule
-   (e.g. local position `(0, 0.7, 0)`) to act as the eyes. Delete the old default
-   `Main Camera` in the scene if this new one replaces it (keep only one camera
-   tagged `MainCamera`).
-5. On the Camera, add `PlayerLook` (from `Assets/Scripts/Player`):
-   - **Player Body** → drag the `Player` root object in.
-   - **Input** → drag the `Player` object in (it holds `PlayerInputReader`).
+---
 
-Press Play: WASD should move you, mouse should look around, Space should jump,
-Left Shift should sprint.
+## Feature notes
 
-## 4. Set up the objective UI (Editor)
+Reference for what each system does and why, kept for context — not a
+build sequence (see §2 for that).
 
-1. GameObject → UI → Text (this auto-creates a Canvas + EventSystem if none
-   exist yet). Rename the Text to `FoundMessageText`, set its text to
-   `Found it!`, center it near the top of the screen, and note it isn't required
-   to be visible by default.
-2. Create an empty child under the Canvas named `FoundMessagePanel`, move the
-   `FoundMessageText` under it (or just use the Text object itself as the panel
-   if you'd rather skip the extra nesting).
-3. Add an empty GameObject `GameManager` (or reuse an existing manager object) and
-   add `ObjectiveUI` (from `Assets/Scripts/UI`) to it:
-   - **Found Message Panel** → the panel/object to toggle.
-   - **Found Message Text** → the `Text` component.
-4. On the same or another manager object, add `ObjectiveManager` (from
-   `Assets/Scripts/Game`):
-   - **Objective UI** → drag the object holding `ObjectiveUI` in.
+### Milestone 1/2 — Movement, jump, stairs
 
-## 5. Set up the pickup item (Editor)
+`PlayerInputReader`/`PlayerMotor`/`PlayerLook` (`Assets/Scripts/Player`,
+`Assets/Scripts/Input`). WASD + mouse look, Space to jump (up to 2 in a row —
+a double jump — before you must land), Shift to sprint. Grounding uses a
+manual `Physics.CheckSphere` in `PlayerMotor.CheckGrounded()`, not
+`CharacterController.isGrounded` (the built-in flickers false on open flat
+ground). Stairs (`StairsTestBuilder`) climb automatically via
+`CharacterController.stepOffset` — no button, no script, just walking into
+them. Jump is otherwise unconditional; whether it lands you on something is
+just physics.
 
-1. GameObject → 3D Object → Sphere (or Cube), name it `Cheese` (or `Ring`).
-   Scale it down small (e.g. `0.2`), place it somewhere reachable in the room.
-2. On its Collider, check **Is Trigger**.
-3. Add `CollectibleItem` (from `Assets/Scripts/Interaction`):
-   - **Objective Manager** → drag the object holding `ObjectiveManager` in.
+### Milestone 3 — Mobile touch controls
 
-## 6. Verify
+Built via Unity UI's pointer events (`VirtualJoystick`/`TouchLookArea`/
+`TapButton`/`HoldButton` in `Assets/Scripts/Input`), not the
+`com.unity.inputsystem` Action-asset API — the UI event system already
+treats mouse and real touch the same way. `PlayerInputReader` merges these
+with keyboard/mouse into the same values it always exposed.
 
-Press Play:
-- Move with WASD, look with the mouse, jump with Space, sprint with Left Shift.
-- Walk into the pickup item — it should disappear and "Found it!" should appear
-  on screen (and log to the Console).
+Test via **Window → General → Device Simulator** (renders Game view as a
+phone screen, mouse acts as touch) — no build/device needed. Left joystick
+moves, right-side drag looks around, Jump/Sprint buttons bottom-right.
+Keyboard/mouse still work at the same time.
 
-That's the full MVP loop: move around a room, find the item.
+Known rough edges: touch-look sensitivity (`PlayerInputReader.
+touchLookSensitivity`) and `HoldButton`'s release-on-`OnPointerExit`
+behavior are untested guesses — tune by feel.
 
-## Milestone 2 — Traversal (stairs + free jump)
+### Milestone 4 — Mouse character + true scale
 
-No custom climb script — this version leans entirely on
-`CharacterController.stepOffset` (Unity's built-in "walk up small steps
-automatically" behavior, set to `0.3` by `Build MVP Scene`) plus a normal,
-always-available jump (`PlayerMotor.jumpHeight = 0.9`, no gating). Built by
-**Mouse Game → Build Stairs Test (Milestone 2)** (step 3 above): a 5-step
-staircase (0.2m per step, under the 0.3m step offset) leading up to a landing
-platform.
+No Blender access here, so the mouse (`Assets/Editor/MouseModelBuilder.cs`)
+is a primitive-assembled placeholder — swap in a real model later by
+replacing that method's contents. `Player`'s `CharacterController` is real
+mouse scale (height `0.2`, radius `0.06`, `skinWidth` explicitly set to
+`radius * 0.1` since the default `0.08` would exceed this radius and make
+the controller behave very oddly). The **room stayed the same absolute
+size** on purpose — a normal-sized room is already huge next to a real
+mouse; shrinking the room too would defeat the "small relative to the
+environment" point.
 
-**How it works:** nothing to detect or trigger — just walk into the stairs and
-`CharacterController` steps you up each tread as part of normal movement,
-carrying you onto the landing once the steps end. Jump works everywhere, all the
-time; whether it lands you on top of something is just physics (your jump arc
-either reaches a surface or it doesn't, same as any normal jump) — no separate
-climb button or ledge-detection logic involved anymore.
+### Milestone 5 — Cat AI
 
-**Test:** walk into the stairs — you should rise up each step automatically with
-no key press, and continue onto the landing at the top. Separately, try jumping
-(Space, twice in a row for the double jump) at things around the room — a third
-press should do nothing until you land.
+**Idle → Patrol → (sees/hears player) → Chase → (gets close) → Attack →
+(catches player) → Game Over**, or player escapes the `Attack` windup (get
+clear or break line of sight) back to `Chase`. `Chase → (loses player) →
+Search → (times out) → Patrol`. See `Assets/Scripts/AI/{CatAI,CatVision,
+CatHearing}.cs` and `Assets/Scripts/Game/GameOverManager.cs`.
 
-## Milestone 3 — Mobile touch controls
+`Attack` is a brief stationary windup before the actual catch — not an
+instant, unavoidable catch the moment the cat gets close. Patrol/chase
+speeds are kept below the player's walk/sprint speeds on purpose — the cat
+should never out-move a moving player, only catch one that stands still,
+gets cornered, or doesn't react during the Attack windup.
 
-Built via Unity UI's pointer events (`IPointerDownHandler`/`IDragHandler`/etc.),
-not the `com.unity.inputsystem` Action-asset API — the UI event system already
-treats mouse and real touch the same way, so this covers both without extra
-platform-specific code. See `Assets/Scripts/Input/{VirtualJoystick,
-TouchLookArea, TapButton, HoldButton}.cs`. `PlayerInputReader` merges these with
-keyboard/mouse into the same values it always exposed — `PlayerMotor` and
-`PlayerLook` did not change at all for this milestone.
+NavMesh is baked at Unity's default "Humanoid" scale rather than true
+cat-scale (registering a custom agent type has no reliable Editor-script
+API) — the cat may not hug walls as tightly as ideal, but should navigate
+correctly. `HidingSpotsBuilder`'s cover blocks work with zero extra script —
+`CatVision` already treats any solid collider as blocking line of sight.
 
-1. Run **Mouse Game → Build Mobile Controls (Milestone 3)** — **re-run this
-   once even if you already have** — adds a left-side joystick, a right-side
-   drag-to-look area, and Jump/Sprint buttons (bottom-right) to the existing
-   Canvas, wires them into `Player`'s `PlayerInputReader`, locks **Player
-   Settings → Resolution and Presentation → Default Orientation** to Landscape
-   (the whole layout assumes landscape; Unity defaults new projects to
-   Portrait, which is why the Device Simulator's rotate button otherwise
-   appears to do nothing), and fixes a leftover `productName` of
-   "mouse-game-unity" from the initial project setup. A later review found
-   both of these were still un-persisted in `ProjectSettings.asset` (same
-   class of bug as the earlier scene-save issue — PlayerSettings changes
-   aren't guaranteed to hit disk just because they were applied in-memory),
-   so this now explicitly calls `AssetDatabase.SaveAssets()`.
-2. Open **Window → General → Device Simulator** — it renders the Game view as a
-   phone screen and turns your mouse into a simulated touch, so you can test
-   without a build or a physical device. It should already show landscape; use
-   its device dropdown/rotate control if it doesn't.
-3. Press Play with the Device Simulator tab active/docked next to Game.
+### Milestone 6 — Sound / stealth
 
-**Test:** drag the left joystick to move, drag anywhere on the right side to
-look around, tap Jump, hold Sprint while moving. Keyboard/mouse should *also*
-still work at the same time (nothing about Milestone 1/2 controls changed).
+`PlayerMotor` fires `Jumped`/`Landed` events; `NoiseEmitter` (on `Player`)
+turns movement into a noise radius: 0 idle, small walking, larger sprinting
+or on a brief jump/land pulse, and a louder/longer pulse from
+`PropKnocker` bumping a `KnockableProp` (`Build Knockable Props`).
+`CatHearing.CanHearPlayer` reads that radius — this covers the README's
+full noise spec, including "knocking a prop = loud".
 
-**Known rough edges to expect and tune by feel** (all plain fields on the
-relevant component, no code restructuring needed):
-- Touch-look sensitivity (`PlayerInputReader.touchLookSensitivity`) was picked
-  without live testing — likely needs adjusting once you can feel it.
-- `HoldButton` releases Sprint on `OnPointerExit` (finger/cursor sliding off the
-  button) to avoid a stuck-on bug — this can feel twitchy with a small button;
-  enlarge the button or remove that behavior if it's annoying in practice.
-- The joystick/button visuals are Unity's built-in placeholder sprite
-  (`UI/Skin/Knob.psd`) with transparency — functional, not final art.
+This noise mechanic is silent by design (a gameplay radius, not audio) —
+separately, `PlayerAudio` (also on `Player`) plays actual placeholder SFX
+(procedurally generated tones/noise-bursts, `Assets/Scripts/Audio/
+ProceduralAudio.cs` — no real audio asset files exist in the project) on
+the same `PlayerMotor` events.
 
-Once it feels good on the Device Simulator, the real test is an actual Android
-device/build — see `UNITY_INSTALL_GUIDE.md` for Android Build Support (already
-installed) and switch **File → Build Settings → Android** when ready for that.
-
-## Milestone 4 — Mouse character + true scale
-
-No Blender access here, so the mouse is a placeholder assembled from primitives
-(`Assets/Editor/MouseModelBuilder.cs`) rather than an imported model — same
-"primitives until gameplay works" approach as everything else. Swapping in a
-real Blender-modeled mouse later just means replacing that method's contents;
-nothing else needs to change.
-
-This milestone also rescaled the `Player` to actual mouse size — a real change
-in feel, not just visuals:
-- `CharacterController`: height `0.2`, radius `0.06` (was human-scale: height
-  `2`, radius `0.5`).
-- `PlayerMotor`: walk/sprint/jump/gravity/ground-check values all rescaled to
-  match (see the field defaults/tooltips in the script).
-- Stairs (`StairsTestBuilder`) rescaled proportionally so they're still
-  climbable under the new (smaller) step offset.
-- The **room stayed the same absolute size** on purpose — that's what makes the
-  mouse look small "relative to the environment": a normal-sized room is
-  already huge next to a real mouse, so shrinking the room too would defeat the
-  point. Only the character (and things sized directly against it, like the
-  stairs and the cheese) got smaller.
-
-1. Run **Mouse Game → Build MVP Scene (Player + Objective)** again — rescales
-   the existing `Player`/`Cheese` and builds the new `MouseModel` in place of
-   the old capsule.
-2. Run **Mouse Game → Build Stairs Test (Milestone 2)** again — rebuilds the
-   stairs at the new proportional size (old ones, if still in the scene, will
-   now look absurdly oversized — delete them if `Build Stairs Test` doesn't
-   clean them up for you).
-3. Mobile controls (`Build Mobile Controls`) don't need re-running — the touch
-   UI is all screen-space, unaffected by world scale.
-
-**Test:** press Play. You should see a small primitive mouse shape instead of a
-plain capsule, clearly tiny against the room's walls/floor. Walking/jumping/
-stairs/sprint should all still work, just at mouse-appropriate speed and
-jump height (much smaller numbers than before — that's intentional). If
-movement feels too slow/fast or the camera height looks off, `PlayerMotor` and
-the camera's local position (in `MvpSceneBuilder`) are the tunable spots.
-
-## Milestone 5 — Cat AI
-
-State machine: **Idle → Patrol → (sees/hears player) → Chase → (loses player)
-→ Search → (times out) → Patrol**, or **Chase → (catches player) → Game
-Over**. Seeing the player always wins and jumps straight to Chase from any
-state. See `Assets/Scripts/AI/{CatAI,CatVision,CatHearing}.cs` and
-`Assets/Scripts/Game/GameOverManager.cs`.
-
-`CatHearing` is currently a flat proximity check (not real noise levels) —
-that's Milestone 6's job; it's a deliberate stand-in so the state machine has
-somewhere to plug hearing in now.
-
-1. Run **Mouse Game → Build Cat AI (Milestone 5)** (after Build MVP Scene and
-   Build Test Room) — bakes a NavMesh over the room, builds `Cat` (NavMeshAgent
-   + vision/hearing/state machine + a primitive placeholder model, same
-   "primitives until Blender" approach as the mouse) near `(2, 0, -2)`, and
-   wires up the Game Over UI/manager to freeze the player and show a message
-   on catch.
-2. Press Play.
-
-**Test:** the cat should idle briefly, then wander to random nearby points
-(Patrol). Walk into its vision cone (in front of it, within range) — it should
-turn and chase. Let it get close (within `attackTriggerDistance`, 0.3) — it
-should stop and pause briefly (`Attack` windup) rather than catching you
-instantly; if you get clear or break line of sight during that pause, it
-should resume Chase instead of catching you. Stay put/get cornered through
-the windup — movement should freeze and "Caught! Game Over" should appear.
-Back away while chasing (before it gets close enough to attack) to break line
-of sight — it should head to your last known position, look around briefly
-(Search), then give up and resume patrolling.
-
-**Known rough edges:** this is a first pass with no live tuning — vision
-range/angle, hearing radius, speeds, search duration, and the attack
-trigger/windup are all plain fields on `CatAI`/`CatVision`/`CatHearing`, easy
-to adjust once you've felt it. The NavMesh is baked at Unity's default
-"Humanoid" scale rather than true cat-scale (see the comment atop
-`CatAIBuilder.cs` for why) — the cat may not hug walls as tightly as it
-ideally would, but should still navigate the room correctly.
-
-### Hiding spots
-
-The room was wide open with nothing to break line of sight, which is most of
-why the cat felt unfair. **Mouse Game → Build Hiding Spots** scatters 5 small
-cover blocks around the room — CatVision already treats any solid collider as
-blocking, so standing behind one just works, no extra wiring. Cover height
-(0.26) is taller than the cat's eye point (0.20, set on `CatVision.eye` in
-`CatAIBuilder` — previously defaulted to ground level, which didn't match
-where the model's eyes actually are).
-
-**Important ordering:** run **Build Hiding Spots**, then re-run **Build Cat AI
-(Milestone 5)** — the NavMesh was baked before these obstacles existed, so the
-cat's pathing won't know to route around them until it's rebaked.
-
-## Milestone 6 — Sound / stealth
-
-`PlayerMotor` now fires `Jumped`/`Landed` events; `NoiseEmitter` (on `Player`,
-wired automatically by `Build MVP Scene`) turns movement into a noise radius:
-0 while idle, small while walking, larger while sprinting, and a brief larger
-pulse on jump/land. `CatHearing.CanHearPlayer` reads that radius instead of
-the flat proximity check it started as — no changes needed anywhere else,
-that's exactly what having a stable method signature there was for.
-
-"Knocking a prop = loud" from the README isn't wired up — there's no
-prop-interaction system yet to trigger it. `NoiseEmitter.EmitNoise(radius)` is
-the hook for whenever one exists; `CatHearing` won't need to change.
-
-**Audio:** the noise system above is silent by design (it's a gameplay radius
-for the cat's hearing, not sound effects). Actual audible footstep/jump/land
-SFX are a separate addition — `PlayerAudio` (also on `Player`) plays short
-procedurally generated placeholder tones (`Assets/Scripts/Audio/
-ProceduralAudio.cs`) on the same `PlayerMotor` events, since no real audio
-asset files exist in the project. Swap in real recorded clips later by
-assigning them in `PlayerAudio` instead of the generated ones.
-
-No new build step — re-run **Build MVP Scene** to add `NoiseEmitter`/
-`PlayerAudio` to an existing `Player` if not already there (safe/idempotent).
-
-### Knockable props ("knocking a prop = loud")
-
-Run **Mouse Game → Build Knockable Props** — scatters 3 small cylinder props
-around the room and adds `PropKnocker` to `Player`. Bumping into one (walking
-into it) emits a louder, longer noise pulse than sprinting does — `CatHearing`
-doesn't need any changes to react to it, same as the walk/sprint/jump/land
-noise. **Test:** walk into a prop near the cat (but outside its vision cone)
-— it should be more likely to notice than an equivalent walk without a prop.
-
-**Test:** stand still near the cat's patrol path — it shouldn't notice you
-from sound alone at normal patrol distances (only sight, or if you're inside
-`walkNoiseRadius`/`sprintNoiseRadius` of it). Sprint past it (not in its
-vision cone) — it should be able to hear and investigate from further away
-than a walk would allow. Jump/land near it — same, a brief noticeable pulse.
-Noise radii (`walkNoiseRadius`, `sprintNoiseRadius`, `jumpNoiseRadius`,
-`landNoiseRadius` on `NoiseEmitter`) are untested guesses, easy to tune once
-you've felt it.
-
-## First Complete Level — Kitchen
+### First Complete Level — Kitchen
 
 The README's actual target level: cabinet (start) → box → chair → table →
 countertop, cheese on the countertop, the cat guarding the path, and a real
-**escape** step — reaching the cheese alone no longer ends anything, you have
-to get back to the start.
+**escape** step — reaching the cheese alone no longer ends anything, you
+have to get back to the start (`EscapeZone`/`LevelCompleteManager`/
+`LevelCompleteUI`, the win-state mirror of `GameOverManager`/`GameOverUI`).
 
-Unlike the stairs test (auto-climbed via `stepOffset`), each hop here is a
-**genuine jump** — the height gaps (0.12/0.16/0.17/0.17) exceed `stepOffset`
-(0.04) and rely on `PlayerMotor.jumpHeight` (0.22) to actually clear them.
-The path is a straight line along +Z at a constant X (no strafing needed,
-just forward + jump repeatedly), with a deliberately tight ~0.08m edge-to-edge
-gap between each piece — worked out from the actual jump arc math
-(`jumpHeight`/`gravity` give ~0.22s time-to-apex, ~0.11m of horizontal travel
-at `walkSpeed`), since the first version's looser diagonal gaps (~0.2m) were
-right at the edge of what's physically reachable. This coexists with, doesn't
-replace, the generic stairs/hiding-spot test props elsewhere in the room.
+Unlike the stairs test (auto-climbed via `stepOffset`), each hop is a
+**genuine jump** — the height gaps (0.12/0.16/0.17/0.17) exceed
+`stepOffset` (0.04) and rely on `jumpHeight` (0.22) to clear them. The path
+is a straight line along +Z at a constant X (no strafing needed) with a
+tight ~0.08m edge-to-edge gap, worked out from the actual jump-arc math
+(`jumpHeight`/`gravity` → ~0.22s time-to-apex → ~0.11m of horizontal travel
+at `walkSpeed`) rather than eyeballed. This coexists with, doesn't replace,
+the generic stairs/hiding-spot/prop test objects elsewhere in the room.
 
-1. Run **Mouse Game → Build Kitchen Level** (after Build MVP Scene, Build Test
-   Room, and ideally Build Cat AI so the cat gets repositioned to guard the
-   path too) — builds the furniture path at `x=-3.3, z=2.1..3.41`, moves
-   `Cheese` onto the countertop, adds an invisible `EscapeZone` trigger near
-   the cabinet, and repositions `Cat` to `(-3.3, 0, 2.75)` (the floor at the
-   base of the path — it can't jump/climb the furniture itself). It's safe to
-   re-run **Build MVP Scene** or **Build Cat AI** afterward for unrelated
-   reasons (e.g. picking up a Player fix, or rebaking the NavMesh) — both now
-   detect the kitchen level and leave the Cheese/Cat placements alone instead
-   of resetting them back to their generic test-room spots.
-2. If you'd already built `Cat AI` before this, re-run **Build Cat AI**
-   afterward too — it re-bakes the NavMesh, which should now account for the
-   new furniture blocking/shaping paths through that area.
-3. Press Play.
+### Quality-of-life: Restart button
 
-**Test:** climb the path (box → chair → table → countertop) via jumping —
-each gap should be reachable but require an actual jump, not just walking
-into it. Grab the cheese ("Found it!" should appear, same as before). Try
-walking into the escape zone *before* grabbing the cheese — nothing should
-happen. Then return to the escape zone after grabbing it — "You escaped!
-Level Complete!" should appear and movement should freeze. Avoid/lose the cat
-somewhere in there for the full experience.
+Both the Game Over and Level Complete screens include a **Restart** button
+(reloads the scene) so you can retry without leaving Play mode. Built by
+`CatAIBuilder.BuildRestartButton` (shared with `KitchenLevelBuilder`).
 
-**Known rough edges:** the furniture positions/gap sizes are a first pass with
-no live testing — if a jump doesn't quite reach, nudge the relevant block
-closer together or shorten the gap in `KitchenLevelBuilder.Path`, or bump
-`PlayerMotor.jumpHeight` slightly. The escape zone's collider is invisible on
-purpose (so it doesn't look like a piece of blocking furniture) — if that's
-confusing in practice, give it a placeholder material instead of disabling
-its renderer.
+---
 
-## Quality-of-life: Restart button
+## 4. Full test pass — what to test, and how
 
-Both the Game Over and Level Complete screens now include a **Restart**
-button (reloads the scene) so you can retry without leaving Play mode —
-useful for a long testing session covering everything at once. Built by
-`CatAIBuilder.BuildRestartButton` (shared with `KitchenLevelBuilder`); no
-separate build step, it's part of `Build Cat AI` / `Build Kitchen Level`.
+Run everything below in one Play session after completing the build order
+in §2. Nothing here has been live-tested yet — numeric feel (speeds, jump
+heights, vision/hearing ranges, timers) is all a first pass and expected to
+need tuning; report anything that feels off rather than assuming it's
+correct.
+
+**A. Movement basics**
+1. WASD moves, mouse looks around (click into the Game view first to lock
+   the cursor if it isn't already).
+2. Hold Shift — sprint should be visibly faster.
+3. Press Space — jump. Press it again in the air — a second jump (double
+   jump) should fire. A third press should do nothing until you land.
+4. Confirm jump works reliably everywhere (open floor, near walls, near
+   stairs) — not just in specific spots.
+
+**B. Stairs (generic mechanic test, near `x=-1.5`)**
+5. Walk straight into the stairs — you should rise up each step
+   automatically with no key press, continuing onto the landing at the top.
+
+**C. Objective — find the cheese (test-room version, if not overwritten by
+the kitchen level's countertop version)**
+6. Walk into the `Cheese` object — it should disappear and "Found it!"
+   should appear on screen.
+
+**D. Hiding spots & knockable props**
+7. Note the 5 cover-block positions and 3 knockable props scattered around
+   the room (used properly in step F below, alongside the cat).
+8. Walk into a knockable prop — nothing should happen visually, but it
+   should make the cat more likely to notice you from a distance if it's
+   nearby (see step F).
+
+**E. Mobile controls (optional — skip if only testing keyboard/mouse)**
+9. Open **Window → General → Device Simulator**, dock it next to Game.
+10. Press Play with that tab active. Confirm it renders in landscape.
+11. Drag the left joystick to move, drag the right side to look around, tap
+    Jump, hold Sprint. Keyboard/mouse should still work simultaneously.
+
+**F. Cat AI — detection, chase, attack, search**
+12. Observe the cat idling briefly, then wandering to random nearby points
+    (Patrol).
+13. Walk into its vision cone (in front of it, within range) — it should
+    turn and chase you.
+14. While it's chasing, sprint or jump/land near it from outside its vision
+    cone (elsewhere in a separate attempt) — it should be able to hear and
+    investigate noise from further away than a quiet walk would allow, and
+    a knocked prop should draw it even further/reliably.
+15. Let it get close (within its Attack trigger range) — it should stop and
+    pause briefly (a telegraphed windup) rather than catching you
+    instantly.
+16. During that pause, get clear or break line of sight — it should resume
+    Chase instead of catching you.
+17. Alternatively, stand still / get cornered through the windup — movement
+    should freeze and "Caught! Game Over" should appear, with a **Restart**
+    button that reloads the scene.
+18. Back away while chasing (before it's close enough to attack) to break
+    line of sight — it should head to your last known position, search
+    briefly, then give up and resume patrolling.
+19. Duck behind one of the 5 hiding-spot cover blocks while being chased —
+    the cat should lose sight of you and eventually give up, same as step
+    18.
+
+**G. Kitchen level — the actual target experience**
+20. Head to the furniture path (straight line at `x=-3.3`, `z` increasing).
+21. Jump from the floor onto the box, then chair, then table, then
+    countertop — each hop should require an actual jump (not just walking
+    up), and each gap should be reachable without feeling impossibly tight.
+22. Grab the cheese on the countertop — "Found it!" should appear.
+23. Walk into the escape zone (near the cabinet, back where you started)
+    **before** grabbing the cheese — nothing should happen.
+24. Return to the escape zone **after** grabbing the cheese — "You escaped!
+    Level Complete!" should appear, movement should freeze, and the
+    **Restart** button should work.
+25. Try the whole kitchen sequence again while the cat is actively guarding
+    the path — confirm it's possible (if difficult) to avoid it using the
+    hiding spots and/or timing, not just luck.
+
+**H. Everything together**
+26. One full clean run: spawn → explore → maybe find the test-room cheese
+    or head straight for the kitchen → avoid or lose the cat at least once
+    → complete the kitchen objective → escape → Level Complete. Note
+    anything that breaks, feels unfair, or is simply confusing along the
+    way — that's exactly the kind of feedback most useful at this point.
