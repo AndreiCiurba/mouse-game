@@ -75,11 +75,27 @@ namespace MouseGame.EditorTools
         /// </summary>
         private static void LockToLandscape()
         {
+            // Also fixes a leftover from the temp-project merge during initial setup — the
+            // product name was still "mouse-game-unity" (would show as the app's display name
+            // on an actual Android install). Fixed here rather than a one-off file edit so it's
+            // applied through the API (correct regardless of what the Editor has cached) and
+            // covered by the same explicit save below.
+            if (PlayerSettings.productName != "Mouse Game")
+            {
+                PlayerSettings.productName = "Mouse Game";
+            }
+
             PlayerSettings.defaultInterfaceOrientation = UIOrientation.LandscapeLeft;
             PlayerSettings.allowedAutorotateToPortrait = false;
             PlayerSettings.allowedAutorotateToPortraitUpsideDown = false;
             PlayerSettings.allowedAutorotateToLandscapeLeft = true;
             PlayerSettings.allowedAutorotateToLandscapeRight = true;
+
+            // Same lesson as the scene-save bug: PlayerSettings changes aren't guaranteed to hit
+            // disk just because they were applied in-memory (found this one still unpersisted —
+            // ProjectSettings.asset still showed AutoRotation/portrait allowed — during a later
+            // review, despite this method having already been run at least once).
+            AssetDatabase.SaveAssets();
         }
 
         private static TouchLookArea BuildLookArea(Transform canvasTransform)

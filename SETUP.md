@@ -127,14 +127,19 @@ TouchLookArea, TapButton, HoldButton}.cs`. `PlayerInputReader` merges these with
 keyboard/mouse into the same values it always exposed — `PlayerMotor` and
 `PlayerLook` did not change at all for this milestone.
 
-1. Run **Mouse Game → Build Mobile Controls (Milestone 3)** (after the earlier
-   build steps) — adds a left-side joystick, a right-side drag-to-look area, and
-   Jump/Sprint buttons (bottom-right) to the existing Canvas, wires them into
-   `Player`'s `PlayerInputReader`, and locks **Player Settings → Resolution and
-   Presentation → Default Orientation** to Landscape (the whole layout assumes
-   landscape; Unity defaults new projects to Portrait, which is why the Device
-   Simulator's rotate button otherwise appears to do nothing — a Portrait-locked
-   app doesn't rotate on a real device either, and the Simulator matches that).
+1. Run **Mouse Game → Build Mobile Controls (Milestone 3)** — **re-run this
+   once even if you already have** — adds a left-side joystick, a right-side
+   drag-to-look area, and Jump/Sprint buttons (bottom-right) to the existing
+   Canvas, wires them into `Player`'s `PlayerInputReader`, locks **Player
+   Settings → Resolution and Presentation → Default Orientation** to Landscape
+   (the whole layout assumes landscape; Unity defaults new projects to
+   Portrait, which is why the Device Simulator's rotate button otherwise
+   appears to do nothing), and fixes a leftover `productName` of
+   "mouse-game-unity" from the initial project setup. A later review found
+   both of these were still un-persisted in `ProjectSettings.asset` (same
+   class of bug as the earlier scene-save issue — PlayerSettings changes
+   aren't guaranteed to hit disk just because they were applied in-memory),
+   so this now explicitly calls `AssetDatabase.SaveAssets()`.
 2. Open **Window → General → Device Simulator** — it renders the Game view as a
    phone screen and turns your mouse into a simulated touch, so you can test
    without a build or a physical device. It should already show landscape; use
