@@ -271,6 +271,15 @@ assigning them in `PlayerAudio` instead of the generated ones.
 No new build step — re-run **Build MVP Scene** to add `NoiseEmitter`/
 `PlayerAudio` to an existing `Player` if not already there (safe/idempotent).
 
+### Knockable props ("knocking a prop = loud")
+
+Run **Mouse Game → Build Knockable Props** — scatters 3 small cylinder props
+around the room and adds `PropKnocker` to `Player`. Bumping into one (walking
+into it) emits a louder, longer noise pulse than sprinting does — `CatHearing`
+doesn't need any changes to react to it, same as the walk/sprint/jump/land
+noise. **Test:** walk into a prop near the cat (but outside its vision cone)
+— it should be more likely to notice than an equivalent walk without a prop.
+
 **Test:** stand still near the cat's patrol path — it shouldn't notice you
 from sound alone at normal patrol distances (only sight, or if you're inside
 `walkNoiseRadius`/`sprintNoiseRadius` of it). Sprint past it (not in its
