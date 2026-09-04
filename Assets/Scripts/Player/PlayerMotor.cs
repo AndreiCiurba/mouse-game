@@ -16,14 +16,16 @@ namespace MouseGame.Player
     public class PlayerMotor : MonoBehaviour
     {
         [Header("Movement")]
-        [SerializeField] private float walkSpeed = 3.5f;
-        [SerializeField] private float sprintSpeed = 6f;
+        [Tooltip("Scaled for a mouse-sized CharacterController (~0.2m tall) — small absolute " +
+                 "numbers on purpose, not a bug.")]
+        [SerializeField] private float walkSpeed = 1f;
+        [SerializeField] private float sprintSpeed = 1.8f;
 
         [Header("Jump / Gravity")]
-        [SerializeField] private float jumpHeight = 0.9f;
-        [SerializeField] private float gravity = -20f;
+        [SerializeField] private float jumpHeight = 0.08f;
+        [SerializeField] private float gravity = -9f;
         [Tooltip("Small downward force applied while grounded to keep the character settled onto the floor.")]
-        [SerializeField] private float groundedStickForce = -2f;
+        [SerializeField] private float groundedStickForce = -0.3f;
         [Tooltip("How many jumps are allowed before you must touch ground again (2 = one air jump/double jump).")]
         [SerializeField] private int maxJumps = 2;
         [Tooltip("Ignore the ground check for this long right after a jump fires. Without it, the very " +
@@ -37,8 +39,8 @@ namespace MouseGame.Player
                  "walls/steps) — so grounding uses an explicit overlap check instead. Keep this tight " +
                  "(barely reaching past the CharacterController's skin width) — too generous and it " +
                  "reads 'grounded' while still visibly airborne, which breaks the jump-count limit.")]
-        [SerializeField] private float groundCheckDistance = 0.1f;
-        [SerializeField] private float groundCheckRadius = 0.12f;
+        [SerializeField] private float groundCheckDistance = 0.03f;
+        [SerializeField] private float groundCheckRadius = 0.05f;
         [Tooltip("Should exclude the Player's own layer, or the check can detect itself. " +
                  "MvpSceneBuilder sets this to everything except the auto-created 'Player' layer.")]
         [SerializeField] private LayerMask groundMask = ~0;

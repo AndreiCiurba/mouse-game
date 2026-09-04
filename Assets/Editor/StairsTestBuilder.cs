@@ -12,12 +12,15 @@ namespace MouseGame.EditorTools
     /// </summary>
     public static class StairsTestBuilder
     {
-        private const float StepWidth = 1.2f;
-        private const float StepDepth = 0.45f;
-        private const float StepThickness = 0.15f;
-        private const float StepRise = 0.2f; // must stay below CharacterController.stepOffset
+        // Mouse-scale (Player's CharacterController is height=0.2, radius=0.06, stepOffset=0.04
+        // — see MvpSceneBuilder). These were originally sized for a human-scale character;
+        // rescaled proportionally for Milestone 4.
+        private const float StepWidth = 0.15f;
+        private const float StepDepth = 0.06f;
+        private const float StepThickness = 0.02f;
+        private const float StepRise = 0.025f; // must stay below CharacterController.stepOffset
         private const int StepCount = 5;
-        private const float LandingDepth = 1.5f;
+        private const float LandingDepth = 0.2f;
 
         [MenuItem("Mouse Game/Build Stairs Test (Milestone 2)")]
         private static void BuildStairsTest()

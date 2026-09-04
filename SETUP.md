@@ -114,5 +114,86 @@ climb button or ledge-detection logic involved anymore.
 
 **Test:** walk into the stairs — you should rise up each step automatically with
 no key press, and continue onto the landing at the top. Separately, try jumping
-(Space) at things around the room — it should work everywhere, and land you on
-top of anything short enough for the jump arc to clear.
+(Space, twice in a row for the double jump) at things around the room — a third
+press should do nothing until you land.
+
+## Milestone 3 — Mobile touch controls
+
+Built via Unity UI's pointer events (`IPointerDownHandler`/`IDragHandler`/etc.),
+not the `com.unity.inputsystem` Action-asset API — the UI event system already
+treats mouse and real touch the same way, so this covers both without extra
+platform-specific code. See `Assets/Scripts/Input/{VirtualJoystick,
+TouchLookArea, TapButton, HoldButton}.cs`. `PlayerInputReader` merges these with
+keyboard/mouse into the same values it always exposed — `PlayerMotor` and
+`PlayerLook` did not change at all for this milestone.
+
+1. Run **Mouse Game → Build Mobile Controls (Milestone 3)** (after the earlier
+   build steps) — adds a left-side joystick, a right-side drag-to-look area, and
+   Jump/Sprint buttons (bottom-right) to the existing Canvas, wires them into
+   `Player`'s `PlayerInputReader`, and locks **Player Settings → Resolution and
+   Presentation → Default Orientation** to Landscape (the whole layout assumes
+   landscape; Unity defaults new projects to Portrait, which is why the Device
+   Simulator's rotate button otherwise appears to do nothing — a Portrait-locked
+   app doesn't rotate on a real device either, and the Simulator matches that).
+2. Open **Window → General → Device Simulator** — it renders the Game view as a
+   phone screen and turns your mouse into a simulated touch, so you can test
+   without a build or a physical device. It should already show landscape; use
+   its device dropdown/rotate control if it doesn't.
+3. Press Play with the Device Simulator tab active/docked next to Game.
+
+**Test:** drag the left joystick to move, drag anywhere on the right side to
+look around, tap Jump, hold Sprint while moving. Keyboard/mouse should *also*
+still work at the same time (nothing about Milestone 1/2 controls changed).
+
+**Known rough edges to expect and tune by feel** (all plain fields on the
+relevant component, no code restructuring needed):
+- Touch-look sensitivity (`PlayerInputReader.touchLookSensitivity`) was picked
+  without live testing — likely needs adjusting once you can feel it.
+- `HoldButton` releases Sprint on `OnPointerExit` (finger/cursor sliding off the
+  button) to avoid a stuck-on bug — this can feel twitchy with a small button;
+  enlarge the button or remove that behavior if it's annoying in practice.
+- The joystick/button visuals are Unity's built-in placeholder sprite
+  (`UI/Skin/Knob.psd`) with transparency — functional, not final art.
+
+Once it feels good on the Device Simulator, the real test is an actual Android
+device/build — see `UNITY_INSTALL_GUIDE.md` for Android Build Support (already
+installed) and switch **File → Build Settings → Android** when ready for that.
+
+## Milestone 4 — Mouse character + true scale
+
+No Blender access here, so the mouse is a placeholder assembled from primitives
+(`Assets/Editor/MouseModelBuilder.cs`) rather than an imported model — same
+"primitives until gameplay works" approach as everything else. Swapping in a
+real Blender-modeled mouse later just means replacing that method's contents;
+nothing else needs to change.
+
+This milestone also rescaled the `Player` to actual mouse size — a real change
+in feel, not just visuals:
+- `CharacterController`: height `0.2`, radius `0.06` (was human-scale: height
+  `2`, radius `0.5`).
+- `PlayerMotor`: walk/sprint/jump/gravity/ground-check values all rescaled to
+  match (see the field defaults/tooltips in the script).
+- Stairs (`StairsTestBuilder`) rescaled proportionally so they're still
+  climbable under the new (smaller) step offset.
+- The **room stayed the same absolute size** on purpose — that's what makes the
+  mouse look small "relative to the environment": a normal-sized room is
+  already huge next to a real mouse, so shrinking the room too would defeat the
+  point. Only the character (and things sized directly against it, like the
+  stairs and the cheese) got smaller.
+
+1. Run **Mouse Game → Build MVP Scene (Player + Objective)** again — rescales
+   the existing `Player`/`Cheese` and builds the new `MouseModel` in place of
+   the old capsule.
+2. Run **Mouse Game → Build Stairs Test (Milestone 2)** again — rebuilds the
+   stairs at the new proportional size (old ones, if still in the scene, will
+   now look absurdly oversized — delete them if `Build Stairs Test` doesn't
+   clean them up for you).
+3. Mobile controls (`Build Mobile Controls`) don't need re-running — the touch
+   UI is all screen-space, unaffected by world scale.
+
+**Test:** press Play. You should see a small primitive mouse shape instead of a
+plain capsule, clearly tiny against the room's walls/floor. Walking/jumping/
+stairs/sprint should all still work, just at mouse-appropriate speed and
+jump height (much smaller numbers than before — that's intentional). If
+movement feels too slow/fast or the camera height looks off, `PlayerMotor` and
+the camera's local position (in `MvpSceneBuilder`) are the tunable spots.

@@ -51,7 +51,6 @@ namespace MouseGame.EditorTools
         private static GameObject BuildPlayer(out PlayerInputReader inputReader)
         {
             GameObject player = GetOrCreateRoot("Player");
-            player.transform.position = new Vector3(0f, 1f, 0f);
             player.tag = "Player";
 
             int playerLayer = EnsurePlayerLayer();
@@ -61,16 +60,27 @@ namespace MouseGame.EditorTools
             }
 
             CharacterController controller = GetOrAddComponent<CharacterController>(player);
+            // True mouse scale: ~0.2m tall, ~0.06m radius. Small absolute numbers everywhere
+            // below are consequences of this, not bugs.
+            controller.height = 0.2f;
+            controller.radius = 0.06f;
+            controller.center = Vector3.zero;
+            // Default skinWidth (0.08) exceeds this radius, which makes CharacterController
+            // behave very oddly (can refuse to move at all) — Unity recommends ~10% of radius.
+            controller.skinWidth = controller.radius * 0.1f;
             // Steps shorter than this are walked up automatically as part of normal movement —
             // this is what makes stairs work with no custom script at all. Keep individual
             // stair-tread rises (see StairsTestBuilder) safely under this value.
-            controller.stepOffset = 0.3f;
+            controller.stepOffset = 0.04f;
+
+            // Feet on the floor (y=0): pivot sits at half the capsule height above ground.
+            player.transform.position = new Vector3(0f, controller.height * 0.5f, 0f);
 
             inputReader = GetOrAddComponent<PlayerInputReader>(player);
             PlayerMotor motor = GetOrAddComponent<PlayerMotor>(player);
             // Force these even on a pre-existing PlayerMotor, in case an older build left
             // different values here.
-            SetSerializedField(motor, "jumpHeight", 0.9f);
+            SetSerializedField(motor, "jumpHeight", 0.08f);
             if (playerLayer >= 0)
             {
                 // Exclude the Player's own layer from its ground check, or CheckGrounded can
@@ -78,16 +88,15 @@ namespace MouseGame.EditorTools
                 SetSerializedField(motor, "groundMask", ~(1 << playerLayer));
             }
 
-            // Visible capsule body (CharacterController itself is invisible).
-            GameObject body = FindChild(player.transform, "Body");
-            if (body == null)
+            // Drop the old plain-capsule "Body" from earlier milestones — replaced below by an
+            // actual (primitive-assembled) mouse shape now that scale makes the difference visible.
+            GameObject oldBody = FindChild(player.transform, "Body");
+            if (oldBody != null)
             {
-                body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-                body.name = "Body";
-                Undo.RegisterCreatedObjectUndo(body, "Build MVP Scene");
-                body.transform.SetParent(player.transform, false);
-                Object.DestroyImmediate(body.GetComponent<CapsuleCollider>());
+                Undo.DestroyObjectImmediate(oldBody);
             }
+
+            MouseModelBuilder.BuildMouseModel(player.transform);
 
             // Remove the template's default root-level camera so we don't end up with two
             // MainCamera/AudioListener objects in the scene.
@@ -105,7 +114,14 @@ namespace MouseGame.EditorTools
                 camGO.transform.SetParent(player.transform, false);
             }
             camGO.tag = "MainCamera";
-            camGO.transform.localPosition = new Vector3(0f, 0.7f, 0f);
+            camGO.transform.localPosition = new Vector3(0f, 0.08f, 0f);
+            Camera cam = camGO.GetComponent<Camera>();
+            if (cam != null)
+            {
+                // Default near clip (0.3) is bigger than the whole mouse - clips into nearby
+                // geometry constantly at this scale.
+                cam.nearClipPlane = 0.01f;
+            }
 
             PlayerLook look = GetOrAddComponent<PlayerLook>(camGO);
             SetSerializedField(look, "playerBody", player.transform);
@@ -182,9 +198,12 @@ namespace MouseGame.EditorTools
                 cheese = GameObject.CreatePrimitive(PrimitiveType.Sphere);
                 cheese.name = "Cheese";
                 Undo.RegisterCreatedObjectUndo(cheese, "Build MVP Scene");
-                cheese.transform.position = new Vector3(1f, 0.3f, 1f);
-                cheese.transform.localScale = Vector3.one * 0.3f;
             }
+
+            // Mouse-scale sizing/placement — force this even on a pre-existing Cheese, since an
+            // older build's human-scale cheese (0.3 scale) would now be bigger than the mouse.
+            cheese.transform.position = new Vector3(0.3f, 0.05f, 0.3f);
+            cheese.transform.localScale = Vector3.one * 0.08f;
 
             Collider col = cheese.GetComponent<Collider>();
             if (col != null)
